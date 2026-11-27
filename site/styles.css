@@ -450,3 +450,16 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .layers4 button i{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none}
 .layers4 button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--fg);font-weight:600}
 .layers4 button[aria-pressed="false"]{opacity:.6}
+
+/* ---------- computer screens: wider page, cards side by side ---------- */
+@media (min-width:900px){
+  .app{max-width:1060px}
+  main{display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:16px}
+  /* full-width pieces: day picker, flare banner, main buttons, search, charts, notes */
+  main>.row,main>.flarebar,main>.btn,main>.find,main>.saved,main>.linkbtn,main>.sub,main>.empty-note,main>.warn,main>.ok-note,
+  [data-fscope]>.btn,[data-fscope]>.find,[data-fscope]>.empty-note,
+  main .card:has(#trChart),main .card:has(#tlBody),main .card:has(.rep),main>.card:only-child{grid-column:1/-1}
+  nav .in{max-width:1060px}
+  .wc{right:max(16px,calc(50% - 514px))}
+  .toast{bottom:96px}
+}

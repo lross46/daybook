@@ -87,6 +87,9 @@ const dayLogged = (k) => data.days[k] && !data.days[k].del;
 const openFlare = () => live(data.flares).find((f) => !f.end);
 const inFlare = (k) => live(data.flares).some((f) => roughLo(f.start) <= k && (!f.end || roughSort(f.end) >= k));
 
+/* charts are drawn at this width (in px): 360 on a phone (scaled to fit), the card's real width on a big screen */
+const WIDE = () => window.innerWidth >= 900;
+function chartW() { const m = document.getElementById("main"); return WIDE() && m ? Math.max(360, Math.min(1000, Math.round(m.clientWidth - 30))) : 360; }
 /* ---------- toast & sheet ---------- */
 function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2400); }
 let sheetOnClose = null;
@@ -403,7 +406,7 @@ const weekly = (keys) => keys.length > 100; /* daily bars up to 3 months, weeks 
 function weekKeys(keys) { const out = []; for (let e = keys.length; e > 0; e -= 7) out.unshift(keys.slice(Math.max(0, e - 7), e)); return out; }
 function barChart(keys, opts = {}) {
   const wk = weekly(keys), groups = wk ? weekKeys(keys) : keys.map((k) => [k]);
-  const W = 360, H = opts.h || 210, L = 24, R = 6, T = 26, B = 36, n = groups.length, bw = (W - L - R) / n;
+  const W = chartW(), H = opts.h || (W > 360 ? 250 : 210), L = 24, R = 6, T = 26, B = 36, n = groups.length, bw = (W - L - R) / n;
   const vals = wk ? groups.map(weekOf) : keys.map((k) => getDay(k));
   const max = Math.max(6, ...vals.map((d) => (d ? d.stools : 0)));
   const top = Math.ceil(max / 2) * 2, y = (v) => T + (H - T - B) * (1 - v / top);
@@ -475,17 +478,17 @@ function trRange() {
 /* whole-history strip under the chart: one mark per week coloured by its worst day score, a box where you are */
 function trMini(keys) {
   const all = Object.keys(data.days).filter(dayLogged).sort(); if (!all.length) return "";
-  const t = todayIso(), first = all[0] < keys[0] ? all[0] : keys[0], total = daysBetween(first, t) + 1, mw = 360, mx = (k) => 4 + daysBetween(first, k) / total * (mw - 8);
+  const t = todayIso(), first = all[0] < keys[0] ? all[0] : keys[0], total = daysBetween(first, t) + 1, mw = chartW(), mx = (k) => 4 + daysBetween(first, k) / total * (mw - 8);
   let s = "";
   for (let k = first; k <= t; k = addDays(k, 7)) { let worst = -1; for (let i = 0; i < 7; i++) { const d = getDay(addDays(k, i)); if (d) worst = Math.max(worst, lvl(sccai(d))); }
-    if (worst >= 0) s += `<rect x="${mx(k)}" y="6" width="${Math.max(1.5, (mw - 8) * 7 / total - .5)}" height="18" fill="${SC[worst]}" opacity=".75"/>`; }
+    if (worst >= 0) s += `<rect x="${mx(k)}" y="6" width="${Math.max(1.5, Math.min((mw - 8) * 7 / total - .5, mw - 4 - mx(k)))}" height="18" fill="${SC[worst]}" opacity=".75"/>`; }
   for (const f of live(data.flares).filter((x) => x.start && (x.end || t) >= first)) { const lo = (r) => (r.length === 4 ? r + "-01-01" : r.length === 7 ? r + "-01" : r), hi = (r) => (r.length === 4 ? r + "-12-31" : r.length === 7 ? r + "-28" : r);
     const a = lo(f.start) < first ? first : lo(f.start), b = f.end ? hi(f.end) : t; if (b < first) continue; s += `<rect x="${mx(a)}" y="2" width="${Math.max(1.5, mx(b) - mx(a))}" height="3" fill="var(--mod)"/>`; }
   const y0 = +first.slice(0, 4), y1 = +t.slice(0, 4);
   for (let y = y0 + 1; y <= y1; y++) s += `<line x1="${mx(y + "-01-01")}" x2="${mx(y + "-01-01")}" y1="2" y2="28" stroke="var(--line)"/><text x="${mx(y + "-01-01")}" y="41" font-size="11" text-anchor="middle" fill="var(--muted)">${y}</text>`;
   if (y0 === y1) s += `<text x="4" y="41" font-size="11" fill="var(--muted)">${y0}</text>`;
   s += `<rect x="${mx(keys[0])}" y="1" width="${Math.max(6, mx(keys[keys.length - 1]) - mx(keys[0]))}" height="28" rx="4" fill="var(--accent)" fill-opacity=".14" stroke="var(--accent)" stroke-width="2"/>`;
-  trMini.span = [first, total];
+  trMini.span = [first, total]; trMini.mw = mw;
   return `<div class="tlmini" id="trMini" role="button" aria-label="Whole log: tap to jump there">${S(`0 0 ${mw} 44`, s, 'style="width:100%;height:auto;display:block"')}</div>`;
 }
 const trShift = (months) => { const d = parseIso(trEnd || todayIso()); d.setMonth(d.getMonth() + months); trEnd = iso(d); };
@@ -494,7 +497,7 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-trinfo]")) { trInfo = !trInfo; renderTrends(); return; }
   const b = e.target.closest("[data-tperiod]"); if (b) { tPeriod = +b.dataset.tperiod; renderTrends(); return; }
   const s = e.target.closest("[data-trstep]"); if (s) { trShift(+s.dataset.trstep * tPeriod); renderTrends(); return; }
-  const m = e.target.closest("#trMini"); if (m && trMini.span) { const r = m.getBoundingClientRect(), [first, total] = trMini.span, k = addDays(first, Math.round(((e.clientX - r.left) / r.width * 360 - 4) / 352 * total)); trEnd = addDays(k, Math.round(trRange().keys.length / 2)); renderTrends(); }
+  const m = e.target.closest("#trMini"); if (m && trMini.span) { const r = m.getBoundingClientRect(), [first, total] = trMini.span, k = addDays(first, Math.round(((e.clientX - r.left) / r.width * trMini.mw - 4) / (trMini.mw - 8) * total)); trEnd = addDays(k, Math.round(trRange().keys.length / 2)); renderTrends(); }
 });
 /* slide the chart with a finger: right = earlier */
 document.addEventListener("pointerdown", (e) => { if (tab !== "trends") return; const c = e.target.closest("#trChart, #trMini"); if (!c) return; trDrag = { x: e.clientX, end: trEnd || todayIso(), w: c.getBoundingClientRect().width, mini: c.id === "trMini", moved: false }; });
@@ -966,21 +969,21 @@ const monthEnd = () => Math.ceil(roughYear(todayIso(), "start") * 12 + .001) / 1
 function tlWindow() {
   const span = TL_ZOOMS[tlZ][1]; if (!span) return null;
   if (tlEnd == null) tlEnd = monthEnd();
-  medGantt(360); if (!medGantt.full) return null; const [f0] = medGantt.full, top = monthEnd();
+  medGantt(chartW()); if (!medGantt.full) return null; const [f0] = medGantt.full, top = monthEnd();
   tlEnd = Math.min(Math.max(tlEnd, f0 + span), top); if (!tlDrag || !tlDrag.moved) tlEnd = Math.round(tlEnd * 12) / 12;
   return [tlEnd - span, tlEnd];
 }
 const fmtM = (t) => { const m = Math.round(t * 12); return MONTHS[m % 12] + " " + Math.floor(m / 12); };
 function drawChart() {
   const w = $("#chartWrap"); if (!w) return;
-  const win = tlWindow(), chart = medGantt(360, 0, chartShow, win);
+  const win = tlWindow(), chart = medGantt(chartW(), 0, chartShow, win);
   if (!medGantt.full) { w.innerHTML = `<div class="sub">Add medicines or events to see them here.</div>`; return; }
   const [f0, f1] = medGantt.full;
   const lbl = $("#tlLbl"), span = TL_ZOOMS[tlZ][1];
   if (lbl) lbl.textContent = !win ? `${Math.floor(f0)} to now` : span >= 5 ? `${Math.round(win[0])} – ${Math.round(win[1]) - 1}` : span <= 1 / 12 ? fmtM(win[0]) : `${fmtM(win[0])} – ${fmtM(win[1] - 1 / 12)}`;
   for (const b of $$("[data-tlstep]")) { b.disabled = !win || (+b.dataset.tlstep < 0 ? win[0] <= f0 + .001 : win[1] >= monthEnd() - .001); }
   /* mini-map: the whole history as a thin strip; the box shows where the window is */
-  const mw = 360, mx = (t) => 4 + (t - f0) / (f1 - f0) * (mw - 8);
+  const mw = drawChart.mw = chartW(), mx = (t) => 4 + (t - f0) / (f1 - f0) * (mw - 8);
   let m = "";
   if (chartShow.flares) for (const f of live(data.flares).filter((x) => x.start)) { const a = roughYear(f.start, "start"), b = f.end ? roughYear(f.end, "end") : roughYear(todayIso()); m += `<rect x="${mx(a)}" y="3" width="${Math.max(1.5, mx(b) - mx(a))}" height="24" fill="var(--mod)" opacity=".3"/>`; }
   const nm = [...new Set(live(data.meds).filter((x) => x.start).sort((a, b) => (roughSort(a.start) < roughSort(b.start) ? -1 : 1)).map((x) => x.name))];
@@ -1002,7 +1005,7 @@ document.addEventListener("click", (e) => {
   const st = e.target.closest("[data-tlstep]");
   if (st) { tlEnd += +st.dataset.tlstep * TL_ZOOMS[tlZ][1]; drawChart(); return; }
   const mm = e.target.closest("#tlMini");
-  if (mm && TL_ZOOMS[tlZ][1]) { const r = mm.getBoundingClientRect(), [f0, f1] = medGantt.full, t = f0 + ((e.clientX - r.left) / r.width * 360 - 4) / 352 * (f1 - f0); tlEnd = t + TL_ZOOMS[tlZ][1] / 2; drawChart(); }
+  if (mm && TL_ZOOMS[tlZ][1]) { const r = mm.getBoundingClientRect(), [f0, f1] = medGantt.full, t = f0 + ((e.clientX - r.left) / r.width * drawChart.mw - 4) / (drawChart.mw - 8) * (f1 - f0); tlEnd = t + TL_ZOOMS[tlZ][1] / 2; drawChart(); }
 });
 document.addEventListener("click", (e) => { const j = e.target.closest("[data-jump]"); if (j) jumpTo(+j.dataset.jump); });
 /* slide the chart (or the box on the strip) with a finger; a short tap still opens what's under it */
@@ -1446,7 +1449,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 60</div>
+  <div class="sub">App version 61</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });
@@ -1582,6 +1585,9 @@ document.addEventListener("visibilitychange", () => {
 /* ---------- start ---------- */
 for (const k of ["gl.bdwin", "gl.show", "gl.rep", "gl.period", "gl.zoom", "gl.tlz", "gl.tperiod", "gl.tab", "gl.where"]) LS.del(k);
 render();
+/* redraw when the window is resized on a computer, so charts and columns fit */
+let rsz = 0, wasW = window.innerWidth;
+window.addEventListener("resize", () => { clearTimeout(rsz); rsz = setTimeout(() => { if (Math.abs(window.innerWidth - wasW) < 40) return; wasW = window.innerWidth; const y = window.scrollY; render(); window.scrollTo(0, y); }, 250); });
 setSync(connected() ? (dirty ? "ok" : "ok") : "off");
 if (connected()) sync();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

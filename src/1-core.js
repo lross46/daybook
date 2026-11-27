@@ -87,6 +87,9 @@ const dayLogged = (k) => data.days[k] && !data.days[k].del;
 const openFlare = () => live(data.flares).find((f) => !f.end);
 const inFlare = (k) => live(data.flares).some((f) => roughLo(f.start) <= k && (!f.end || roughSort(f.end) >= k));
 
+/* charts are drawn at this width (in px): 360 on a phone (scaled to fit), the card's real width on a big screen */
+const WIDE = () => window.innerWidth >= 900;
+function chartW() { const m = document.getElementById("main"); return WIDE() && m ? Math.max(360, Math.min(1000, Math.round(m.clientWidth - 30))) : 360; }
 /* ---------- toast & sheet ---------- */
 function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2400); }
 let sheetOnClose = null;

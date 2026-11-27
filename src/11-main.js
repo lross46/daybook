@@ -105,6 +105,9 @@ document.addEventListener("visibilitychange", () => {
 /* ---------- start ---------- */
 for (const k of ["gl.bdwin", "gl.show", "gl.rep", "gl.period", "gl.zoom", "gl.tlz", "gl.tperiod", "gl.tab", "gl.where"]) LS.del(k);
 render();
+/* redraw when the window is resized on a computer, so charts and columns fit */
+let rsz = 0, wasW = window.innerWidth;
+window.addEventListener("resize", () => { clearTimeout(rsz); rsz = setTimeout(() => { if (Math.abs(window.innerWidth - wasW) < 40) return; wasW = window.innerWidth; const y = window.scrollY; render(); window.scrollTo(0, y); }, 250); });
 setSync(connected() ? (dirty ? "ok" : "ok") : "off");
 if (connected()) sync();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

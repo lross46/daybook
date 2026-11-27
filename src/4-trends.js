@@ -17,7 +17,7 @@ const weekly = (keys) => keys.length > 100; /* daily bars up to 3 months, weeks 
 function weekKeys(keys) { const out = []; for (let e = keys.length; e > 0; e -= 7) out.unshift(keys.slice(Math.max(0, e - 7), e)); return out; }
 function barChart(keys, opts = {}) {
   const wk = weekly(keys), groups = wk ? weekKeys(keys) : keys.map((k) => [k]);
-  const W = 360, H = opts.h || 210, L = 24, R = 6, T = 26, B = 36, n = groups.length, bw = (W - L - R) / n;
+  const W = chartW(), H = opts.h || (W > 360 ? 250 : 210), L = 24, R = 6, T = 26, B = 36, n = groups.length, bw = (W - L - R) / n;
   const vals = wk ? groups.map(weekOf) : keys.map((k) => getDay(k));
   const max = Math.max(6, ...vals.map((d) => (d ? d.stools : 0)));
   const top = Math.ceil(max / 2) * 2, y = (v) => T + (H - T - B) * (1 - v / top);
@@ -89,17 +89,17 @@ function trRange() {
 /* whole-history strip under the chart: one mark per week coloured by its worst day score, a box where you are */
 function trMini(keys) {
   const all = Object.keys(data.days).filter(dayLogged).sort(); if (!all.length) return "";
-  const t = todayIso(), first = all[0] < keys[0] ? all[0] : keys[0], total = daysBetween(first, t) + 1, mw = 360, mx = (k) => 4 + daysBetween(first, k) / total * (mw - 8);
+  const t = todayIso(), first = all[0] < keys[0] ? all[0] : keys[0], total = daysBetween(first, t) + 1, mw = chartW(), mx = (k) => 4 + daysBetween(first, k) / total * (mw - 8);
   let s = "";
   for (let k = first; k <= t; k = addDays(k, 7)) { let worst = -1; for (let i = 0; i < 7; i++) { const d = getDay(addDays(k, i)); if (d) worst = Math.max(worst, lvl(sccai(d))); }
-    if (worst >= 0) s += `<rect x="${mx(k)}" y="6" width="${Math.max(1.5, (mw - 8) * 7 / total - .5)}" height="18" fill="${SC[worst]}" opacity=".75"/>`; }
+    if (worst >= 0) s += `<rect x="${mx(k)}" y="6" width="${Math.max(1.5, Math.min((mw - 8) * 7 / total - .5, mw - 4 - mx(k)))}" height="18" fill="${SC[worst]}" opacity=".75"/>`; }
   for (const f of live(data.flares).filter((x) => x.start && (x.end || t) >= first)) { const lo = (r) => (r.length === 4 ? r + "-01-01" : r.length === 7 ? r + "-01" : r), hi = (r) => (r.length === 4 ? r + "-12-31" : r.length === 7 ? r + "-28" : r);
     const a = lo(f.start) < first ? first : lo(f.start), b = f.end ? hi(f.end) : t; if (b < first) continue; s += `<rect x="${mx(a)}" y="2" width="${Math.max(1.5, mx(b) - mx(a))}" height="3" fill="var(--mod)"/>`; }
   const y0 = +first.slice(0, 4), y1 = +t.slice(0, 4);
   for (let y = y0 + 1; y <= y1; y++) s += `<line x1="${mx(y + "-01-01")}" x2="${mx(y + "-01-01")}" y1="2" y2="28" stroke="var(--line)"/><text x="${mx(y + "-01-01")}" y="41" font-size="11" text-anchor="middle" fill="var(--muted)">${y}</text>`;
   if (y0 === y1) s += `<text x="4" y="41" font-size="11" fill="var(--muted)">${y0}</text>`;
   s += `<rect x="${mx(keys[0])}" y="1" width="${Math.max(6, mx(keys[keys.length - 1]) - mx(keys[0]))}" height="28" rx="4" fill="var(--accent)" fill-opacity=".14" stroke="var(--accent)" stroke-width="2"/>`;
-  trMini.span = [first, total];
+  trMini.span = [first, total]; trMini.mw = mw;
   return `<div class="tlmini" id="trMini" role="button" aria-label="Whole log: tap to jump there">${S(`0 0 ${mw} 44`, s, 'style="width:100%;height:auto;display:block"')}</div>`;
 }
 const trShift = (months) => { const d = parseIso(trEnd || todayIso()); d.setMonth(d.getMonth() + months); trEnd = iso(d); };
@@ -108,7 +108,7 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-trinfo]")) { trInfo = !trInfo; renderTrends(); return; }
   const b = e.target.closest("[data-tperiod]"); if (b) { tPeriod = +b.dataset.tperiod; renderTrends(); return; }
   const s = e.target.closest("[data-trstep]"); if (s) { trShift(+s.dataset.trstep * tPeriod); renderTrends(); return; }
-  const m = e.target.closest("#trMini"); if (m && trMini.span) { const r = m.getBoundingClientRect(), [first, total] = trMini.span, k = addDays(first, Math.round(((e.clientX - r.left) / r.width * 360 - 4) / 352 * total)); trEnd = addDays(k, Math.round(trRange().keys.length / 2)); renderTrends(); }
+  const m = e.target.closest("#trMini"); if (m && trMini.span) { const r = m.getBoundingClientRect(), [first, total] = trMini.span, k = addDays(first, Math.round(((e.clientX - r.left) / r.width * trMini.mw - 4) / (trMini.mw - 8) * total)); trEnd = addDays(k, Math.round(trRange().keys.length / 2)); renderTrends(); }
 });
 /* slide the chart with a finger: right = earlier */
 document.addEventListener("pointerdown", (e) => { if (tab !== "trends") return; const c = e.target.closest("#trChart, #trMini"); if (!c) return; trDrag = { x: e.clientX, end: trEnd || todayIso(), w: c.getBoundingClientRect().width, mini: c.id === "trMini", moved: false }; });

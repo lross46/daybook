@@ -51,7 +51,7 @@ const isSteroid = (name) => STEROIDS.some((s) => (name || "").toLowerCase().incl
 const KNOWN_MEDS = ["Mesalazine", "Sulfasalazine", "Balsalazide", "Olsalazine", "Prednisolone", "Budesonide", "Hydrocortisone", "Beclometasone", "Azathioprine", "Mercaptopurine", "Methotrexate", "Ciclosporin", "Tacrolimus", "Infliximab", "Adalimumab", "Golimumab", "Vedolizumab", "Ustekinumab", "Mirikizumab", "Risankizumab", "Guselkumab", "Tofacitinib", "Filgotinib", "Upadacitinib", "Ozanimod", "Etrasimod", "Vitamin D", "Iron", "Folic acid", "Loperamide"];
 const FORMS = ["Tablet", "Rectal", "Injection", "Drip"];
 const WHY = ["Didn't work", "Stopped working", "Side effects", "Course finished", "Switched", "Other"];
-const TAGS = [["lowmood", "Low mood"], ["anxious", "Anxious"], ["stress", "Stress"], ["sleep", "Bad sleep"], ["ill", "Ill / infection"], ["nsaid", "Painkillers"], ["alcohol", "Alcohol"], ["spicy", "Spicy"], ["travel", "Travel"]];
+const TAGS = [["lowmood", "Low mood"], ["anxious", "Anxious"], ["stress", "Stress"], ["sleep", "Bad sleep"], ["ill", "Ill / infection"], ["nsaid", "Painkillers"], ["alcohol", "High alcohol"], ["food", "Unusual food"]];
 const EXTRA = [["joint", "Joints"], ["eye", "Eyes"], ["skin", "Skin"], ["mouth", "Mouth ulcers"]];
 const EXTENT = ["Rectum only", "Left side", "Whole colon"];
 const BLOOD = ["None", "Streaks", "Some", "A lot"];

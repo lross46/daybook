@@ -116,12 +116,34 @@ function reportHtml() {
   ${days.map((k) => { const d = data.days[k], v = sccai(d); return `<tr class="${inFlare(k) ? "fl" : ""}"><td style="white-space:nowrap">${esc(fmtDay(k))}</td><td><span class="dot" style="background:${SC_HEX[lvl(v)]}"></span>${v}</td><td>${d.stools}</td><td>${d.night || 0}</td><td>${BLOOD[d.blood || 0]}</td><td>${URG[d.urg || 0]}</td><td>${d.bristol || ""}</td><td>${d.pain || 0}</td><td>${WELL[d.well || 0]}</td><td>${esc([(d.extra || []).map(exName).join(", "), d.noteExtra, (d.tags || []).map(tagName).join(", "), d.noteTags].filter(Boolean).join(" · "))}</td></tr>`; }).join("")}</table>` : ""}
   <div class="foot">Personal symptom log kept by the patient. Not a medical record. SCCAI = Simple Clinical Colitis Activity Index, calculated automatically from daily entries.</div>`;
 }
-function makePdf() {
-  $("#print").innerHTML = reportHtml();
-  const r = periodRange(), old = document.title;
-  document.title = `Report ${r.end}`;
-  setTimeout(() => { window.print(); setTimeout(() => { document.title = old; }, 1000); }, 50);
+let pdfP = null, pdfFile = null;
+function loadPdfLib() {
+  if (window.html2pdf) return Promise.resolve();
+  return pdfP || (pdfP = new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "vendor/html2pdf.bundle.min.js"; sc.onload = res; sc.onerror = () => { pdfP = null; rej(); }; document.head.appendChild(sc); }));
 }
+/* The PDF is made on the phone (iPhone Home Screen apps ignore the print screen), then shared with a tap. */
+async function makePdf(btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Making PDF…`; }
+  const r = periodRange(), name = `Colitis report ${r.end}.pdf`;
+  const box = document.createElement("div");
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "position:fixed;left:-10000px;top:0;width:720px";
+  box.className = "pdfdoc"; box.style.width = "720px";
+  box.innerHTML = reportHtml(); wrap.appendChild(box); document.body.appendChild(wrap);
+  /* the PDF tool draws each chart as a picture, so give every chart a fixed size and plain colours */
+  for (const sv of box.querySelectorAll("svg")) {
+    const b = sv.getBoundingClientRect(); sv.setAttribute("width", Math.round(b.width)); sv.setAttribute("height", Math.round(b.height)); sv.style.width = sv.style.height = "";
+    sv.innerHTML = sv.innerHTML.replace(/var\(--accent\)/g, "#1f7a6d").replace(/var\(--[a-z0-9]+\)/g, "#6b7a77");
+  }
+  try {
+    await loadPdfLib();
+    const blob = await html2pdf().set({ margin: [10, 10, 12, 10], image: { type: "jpeg", quality: 0.92 }, html2canvas: { scale: 2, scrollX: 0, scrollY: 0, backgroundColor: "#ffffff", useCORS: false }, jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }, pagebreak: { mode: ["css", "legacy"], before: ".pb", avoid: ["tr", ".score", ".k", ".top"] } }).from(box).outputPdf("blob");
+    pdfFile = new File([blob], name, { type: "application/pdf" });
+    openSheet(`${sheetHead("Your PDF is ready", esc(r.label))}<button class="btn primary" data-act="sharePdf">Share or save PDF</button><div class="sub">Pick Save to Files, Mail, WhatsApp or AirDrop.</div>`);
+  } catch (e) { toast("Couldn't make the PDF. Try again."); }
+  finally { wrap.remove(); if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = "Save PDF"; } }
+}
+async function sharePdf() { if (pdfFile) { await shareOrDownload(pdfFile, pdfFile.name); } }
 
 /* ---------- Excel ---------- */
 async function shareOrDownload(blob, name) {

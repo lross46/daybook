@@ -1,6 +1,6 @@
 // Network first, falling back to the last cached copy so the app opens offline.
-const CACHE = "daybook-v15";
-const SHELL = ["./", "index.html", "app.js", "styles.css", "manifest.webmanifest", "vendor/xlsx.mini.min.js", "icons/icon-192.png"];
+const CACHE = "daybook-v16";
+const SHELL = ["./", "index.html", "app.js", "styles.css", "manifest.webmanifest", "vendor/xlsx.mini.min.js", "vendor/html2pdf.bundle.min.js", "icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

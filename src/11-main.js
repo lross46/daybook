@@ -59,7 +59,8 @@ const ACTS = {
     save("Saved"); closeSheet(); render();
   },
   qClear: () => { for (const q of data.questions) if (q.done && !q.del) { q.del = true; stamp(q); } save("Removed"); renderDoctor(); },
-  pdf: () => makePdf(),
+  pdf: (el) => makePdf(el),
+  sharePdf: () => sharePdf(),
   excel: async (el) => { el.disabled = true; try { await loadXlsx(); makeExcel(); } catch { toast("Excel tool didn't load. Try again online."); } el.disabled = false; },
 };
 document.addEventListener("click", (e) => {

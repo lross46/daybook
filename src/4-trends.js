@@ -74,24 +74,41 @@ function trRange() {
   const [a, b] = [parseIso(start), parseIso(trEnd)], f = (x, y) => x.getDate() + " " + MONTHS[x.getMonth()] + (y ? " " + x.getFullYear() : "");
   return { keys, label: a.getFullYear() === b.getFullYear() ? `${f(a)} – ${f(b, 1)}` : `${f(a, 1)} – ${f(b, 1)}` };
 }
+/* whole-history strip under the chart: one mark per week coloured by its worst day score, a box where you are */
+function trMini(keys) {
+  const all = Object.keys(data.days).filter(dayLogged).sort(); if (!all.length) return "";
+  const t = todayIso(), first = all[0] < keys[0] ? all[0] : keys[0], total = daysBetween(first, t) + 1, mw = 360, mx = (k) => 4 + daysBetween(first, k) / total * (mw - 8);
+  let s = "";
+  for (let k = first; k <= t; k = addDays(k, 7)) { let worst = -1; for (let i = 0; i < 7; i++) { const d = getDay(addDays(k, i)); if (d) worst = Math.max(worst, lvl(sccai(d))); }
+    if (worst >= 0) s += `<rect x="${mx(k)}" y="6" width="${Math.max(1.5, (mw - 8) * 7 / total - .5)}" height="18" fill="${SC[worst]}" opacity=".75"/>`; }
+  for (const f of live(data.flares).filter((x) => x.start && (x.end || t) >= first)) { const lo = (r) => (r.length === 4 ? r + "-01-01" : r.length === 7 ? r + "-01" : r), hi = (r) => (r.length === 4 ? r + "-12-31" : r.length === 7 ? r + "-28" : r);
+    const a = lo(f.start) < first ? first : lo(f.start), b = f.end ? hi(f.end) : t; if (b < first) continue; s += `<rect x="${mx(a)}" y="2" width="${Math.max(1.5, mx(b) - mx(a))}" height="3" fill="var(--mod)"/>`; }
+  const y0 = +first.slice(0, 4), y1 = +t.slice(0, 4);
+  for (let y = y0 + 1; y <= y1; y++) s += `<line x1="${mx(y + "-01-01")}" x2="${mx(y + "-01-01")}" y1="2" y2="28" stroke="var(--line)"/><text x="${mx(y + "-01-01")}" y="40" font-size="9" text-anchor="middle" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${y}</text>`;
+  if (y0 === y1) s += `<text x="4" y="40" font-size="9" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${y0}</text>`;
+  s += `<rect x="${mx(keys[0])}" y="1" width="${Math.max(6, mx(keys[keys.length - 1]) - mx(keys[0]))}" height="28" rx="4" fill="var(--accent)" fill-opacity=".14" stroke="var(--accent)" stroke-width="2"/>`;
+  trMini.span = [first, total];
+  return `<div class="tlmini" id="trMini" role="button" aria-label="Whole log: tap to jump there">${S(`0 0 ${mw} 44`, s, 'style="width:100%;height:auto;display:block"')}</div>`;
+}
 const trShift = (months) => { const d = parseIso(trEnd || todayIso()); d.setMonth(d.getMonth() + months); trEnd = iso(d); };
 document.addEventListener("click", (e) => {
   if (tab !== "trends") return;
   const b = e.target.closest("[data-tperiod]"); if (b) { tPeriod = +b.dataset.tperiod; LS.set("gl.tperiod", tPeriod); renderTrends(); return; }
-  const s = e.target.closest("[data-trstep]"); if (s) { trShift(+s.dataset.trstep * tPeriod); renderTrends(); }
+  const s = e.target.closest("[data-trstep]"); if (s) { trShift(+s.dataset.trstep * tPeriod); renderTrends(); return; }
+  const m = e.target.closest("#trMini"); if (m && trMini.span) { const r = m.getBoundingClientRect(), [first, total] = trMini.span, k = addDays(first, Math.round(((e.clientX - r.left) / r.width * 360 - 4) / 352 * total)); trEnd = addDays(k, Math.round(trRange().keys.length / 2)); renderTrends(); }
 });
 /* slide the chart with a finger: right = earlier */
-document.addEventListener("pointerdown", (e) => { if (tab !== "trends") return; const c = e.target.closest("#trChart"); if (!c) return; trDrag = { x: e.clientX, end: trEnd || todayIso(), w: c.getBoundingClientRect().width, moved: false }; });
+document.addEventListener("pointerdown", (e) => { if (tab !== "trends") return; const c = e.target.closest("#trChart, #trMini"); if (!c) return; trDrag = { x: e.clientX, end: trEnd || todayIso(), w: c.getBoundingClientRect().width, mini: c.id === "trMini", moved: false }; });
 document.addEventListener("pointermove", (e) => {
   if (!trDrag) return; const dx = e.clientX - trDrag.x; if (!trDrag.moved && Math.abs(dx) < 8) return;
   if (!trDrag.moved) try { $("#main").setPointerCapture(e.pointerId); } catch {}
   trDrag.moved = true; e.preventDefault();
-  const days = Math.round(-dx / trDrag.w * trRange().keys.length); trEnd = addDays(trDrag.end, days);
+  const days = trDrag.mini ? Math.round(dx / trDrag.w * (trMini.span ? trMini.span[1] : 0)) : Math.round(-dx / trDrag.w * trRange().keys.length); trEnd = addDays(trDrag.end, days);
   if (!trDrag.raf) trDrag.raf = requestAnimationFrame(() => { if (trDrag) trDrag.raf = 0; renderTrends(); });
 }, { passive: false });
 const trDragEnd = () => { if (!trDrag) return; const m = trDrag.moved; trDrag = null; if (m) { trSwallow = Date.now(); renderTrends(); } };
 document.addEventListener("pointerup", trDragEnd); document.addEventListener("pointercancel", trDragEnd);
-document.addEventListener("click", (e) => { if (Date.now() - trSwallow < 300 && e.target.closest("#trChart")) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+document.addEventListener("click", (e) => { if (Date.now() - trSwallow < 300 && e.target.closest("#trChart, #trMini")) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 function renderTrends() {
   const tr = trRange(), keys = tr.keys, logged = keys.filter(dayLogged), atToday = trEnd >= todayIso();
   if (Object.keys(data.days).filter(dayLogged).length === 0) {
@@ -105,9 +122,9 @@ function renderTrends() {
   const n = logged.length || 1;
   $("#main").innerHTML = `
   ${heroHtml()}
-  <div class="seg" id="tperiod">${TR_P.map(([l, m]) => `<button data-tperiod="${m}" aria-pressed="${m === tPeriod}">${l}</button>`).join("")}</div>
+  <div class="card"><div class="seg" id="tperiod">${TR_P.map(([l, m]) => `<button data-tperiod="${m}" aria-pressed="${m === tPeriod}">${l}</button>`).join("")}</div>
   <div class="row" id="trNav"><button class="navbtn" data-trstep="-1" aria-label="Earlier">‹</button><b class="tllbl">${tr.label}</b><button class="navbtn" data-trstep="1" aria-label="Later" ${atToday ? "disabled" : ""}>›</button></div>
-  <div class="card"><div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--mucus)">${mucus}</b> with mucus</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div><div id="trChart">${barChart(keys)}</div><div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 40 40" width="10" height="10" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${mucusPath}" fill="var(--mucus)"/></svg>Mucus</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">Bar height = stools that day. Drop on top = blood, blob on top = mucus, moon underneath = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
+  <div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--mucus)">${mucus}</b> with mucus</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div><div id="trChart">${barChart(keys)}</div>${trMini(keys)}<div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 40 40" width="10" height="10" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${mucusPath}" fill="var(--mucus)"/></svg>Mucus</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">Bar height = stools that day. Drop on top = blood, blob on top = mucus, moon underneath = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
   <div class="card">${foldHead("calBody", "Calendar", `${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)} · tap a day to open it`)}<div id="calBody" ${isOpen("calBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px"><div class="row"><div class="daynav"><button data-act="calPrev" aria-label="Previous month">‹</button><div class="name">${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)}</div><button data-act="calNext" aria-label="Next month" ${calMonth >= todayIso().slice(0, 7) ? "disabled" : ""}>›</button></div></div>${calendar(calMonth)}</div></div>
   ${badDaysCard(keys)}`;
 }

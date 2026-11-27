@@ -399,3 +399,4 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .tlmini{cursor:pointer;border-top:1px solid var(--line);padding-top:6px}
 #ganttBox,#tlMini{touch-action:pan-y;user-select:none;-webkit-user-select:none}
 #trChart{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+#trMini{touch-action:pan-y;user-select:none;-webkit-user-select:none}

@@ -1,5 +1,5 @@
 /* ---------- Toilet finder (OpenStreetMap via Overpass) ---------- */
-const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 function distM(a, b, c, d) {
   const R = 6371e3, r = Math.PI / 180, x = (c - a) * r, y = (d - b) * r;
   const h = Math.sin(x / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(y / 2) ** 2;
@@ -28,18 +28,18 @@ function toiletFail(lat, msg) {
 async function loadToilets(lat, lon) {
   if ($("#sheet").hidden) return;
   toiletSheet(`<div class="ok-note"><span class="spin"></span> Looking for toilets…</div>`);
-  const q = `[out:json][timeout:15];(nwr["amenity"="toilets"](around:1500,${lat},${lon});nwr["toilets"="yes"]["amenity"!="toilets"](around:800,${lat},${lon});nwr["toilets:access"~"customers|yes|public"](around:800,${lat},${lon}););out center 80;`;
-  let j = null;
+  const q = `[out:json][timeout:20];(nwr["amenity"="toilets"](around:1500,${lat},${lon});nwr["toilets"="yes"]["amenity"!="toilets"](around:800,${lat},${lon});nwr["toilets:access"~"customers|yes|public"](around:800,${lat},${lon}););out center 80;`;
+  let j = null; const why = [];
   for (const url of OVERPASS) {
     try {
-      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 16000);
-      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ctl.signal, referrerPolicy: "no-referrer" });
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 22000);
+      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ctl.signal, referrerPolicy: "origin" });
       clearTimeout(t);
-      if (r.ok) { j = await r.json(); break; }
-    } catch {}
+      if (r.ok) { j = await r.json(); break; } why.push(r.status);
+    } catch (e) { why.push(e.name === "AbortError" ? "slow" : "blocked"); }
   }
   if ($("#sheet").hidden) return;
-  if (!j) return toiletFail(lat, "The toilet map didn't answer. Try Maps instead.");
+  if (!j) return toiletFail(lat, `The toilet map didn't answer (${why.join(", ")}). Try Maps instead.`);
   const seen = new Set(), list = [];
   for (const el of j.elements || []) {
     const la = el.lat ?? el.center?.lat, lo = el.lon ?? el.center?.lon; if (la == null) continue;

@@ -85,5 +85,8 @@ let sheetOnClose = null;
 function openSheet(html, onClose) {
   const s = $("#sheet"); s.innerHTML = `<div class="grab"></div>${html}`; s.hidden = false; $("#scrim").hidden = false; s.scrollTop = 0; sheetOnClose = onClose || null;
 }
+/* after saving an edit opened from a details view, go back to that view (not the tab) */
+let reopen = null;
+function doneEdit() { const f = reopen, y = window.scrollY; reopen = null; closeSheet(); render(); window.scrollTo(0, y); if (f) f(); }
 function closeSheet() { $("#sheet").hidden = true; $("#scrim").hidden = true; $("#sheet").innerHTML = ""; const f = sheetOnClose; sheetOnClose = null; if (f) f(); }
 const sheetHead = (title, sub = "") => `<div class="row"><div><h2>${esc(title)}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div><button class="btn small" data-act="close">Close</button></div>`;

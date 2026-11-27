@@ -85,6 +85,9 @@ let sheetOnClose = null;
 function openSheet(html, onClose) {
   const s = $("#sheet"); s.innerHTML = `<div class="grab"></div>${html}`; s.hidden = false; $("#scrim").hidden = false; s.scrollTop = 0; sheetOnClose = onClose || null;
 }
+/* after saving an edit opened from a details view, go back to that view (not the tab) */
+let reopen = null;
+function doneEdit() { const f = reopen, y = window.scrollY; reopen = null; closeSheet(); render(); window.scrollTo(0, y); if (f) f(); }
 function closeSheet() { $("#sheet").hidden = true; $("#scrim").hidden = true; $("#sheet").innerHTML = ""; const f = sheetOnClose; sheetOnClose = null; if (f) f(); }
 const sheetHead = (title, sub = "") => `<div class="row"><div><h2>${esc(title)}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div><button class="btn small" data-act="close">Close</button></div>`;
 const S=(vb,inner,extra='')=>`<svg viewBox="${vb}" ${extra}>${inner}</svg>`;
@@ -200,6 +203,7 @@ function render() {
   $("#ttl").textContent = TITLES[tab];
   $("#hsub").textContent = fmtDay(todayIso()).replace(/^(\w+) /, (m, d) => ({ Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" }[d] + " "));
   ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
+  for (const b of $$('[data-act="listToggle"]')) { const id = b.dataset.fold || "evList", l = $("#" + id); if (foldOpen[tab + "." + id] && l && l.hidden) listToggle(b, true); }
 }
 function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); }
 
@@ -531,7 +535,7 @@ function medSave(id) {
   let m = id && data.meds.find((x) => x.id === id);
   if (!m) { m = { id: uid(), changes: [], color: live(data.meds).filter((x) => x.name.toLowerCase() !== name.toLowerCase()).length % MED_COLORS.length }; const same = live(data.meds).find((x) => x.name.toLowerCase() === name.toLowerCase()); if (same) m.color = same.color; data.meds.push(m); }
   Object.assign(m, { name: name[0].toUpperCase() + name.slice(1), form: segVal("mForm"), dose: $("#mDose").value.trim(), freq: $("#mFreq").value.trim(), start, stop, why: now ? "" : chipVal("mWhy"), note: now ? "" : $("#mNote").value.trim() });
-  stamp(m); save(id ? "Saved" : "Medicine added"); closeSheet(); render();
+  stamp(m); save(id ? "Saved" : "Medicine added"); doneEdit();
 }
 function medActions(m) {
   if (m.stop) return medForm(m);
@@ -546,12 +550,12 @@ function medDose(id) {
   const m = data.meds.find((x) => x.id === id), dose = $("#cDose").value.trim(), freq = $("#cFreq").value.trim(), from = $("#cFrom").value || todayIso();
   if (!dose) { toast("Add the new dose"); return; }
   m.changes = m.changes || []; m.changes.push({ from, dose, freq }); m.changes.sort((a, b) => (a.from < b.from ? -1 : 1));
-  stamp(m); save("Dose changed"); closeSheet(); render();
+  stamp(m); save("Dose changed"); doneEdit();
 }
 function medStop(id) {
   const m = data.meds.find((x) => x.id === id), d = $("#sDate").value || todayIso();
   m.stop = d.slice(0, 7); m.stopDay = d; m.why = chipVal("sWhy"); m.note = $("#sNote").value.trim();
-  stamp(m); save("Stopped. Moved to Tried before"); closeSheet(); render();
+  stamp(m); save("Stopped. Moved to Tried before"); doneEdit();
 }
 
 /* ---------- History ---------- */
@@ -658,11 +662,11 @@ function aboutOpen() {
 }
 /* folded sections stay open while the tab redraws (e.g. after ticking a question) */
 const foldOpen = {};
-const foldHead = (id, title, sub) => `<button class="about fold" data-act="listToggle" data-fold="${id}" aria-expanded="${!!foldOpen[id]}"><span class="grow"><b>${esc(title)}</b><span class="sub">${esc(sub)}</span></span><span class="chev" aria-hidden="true"${foldOpen[id] ? ' style="transform:rotate(90deg)"' : ""}>›</span></button>`;
+const foldHead = (id, title, sub) => `<button class="about fold" data-act="listToggle" data-fold="${id}" aria-expanded="${!!foldOpen[tab + "." + id]}"><span class="grow"><b>${esc(title)}</b><span class="sub">${esc(sub)}</span></span><span class="chev" aria-hidden="true"${foldOpen[id] ? ' style="transform:rotate(90deg)"' : ""}>›</span></button>`;
 /* open or close a folded section: the button names its section with data-fold (default: the list) */
 function listToggle(el, open) {
   const id = el?.dataset.fold || "evList", l = $("#" + id); if (!l) return;
-  l.hidden = open === undefined ? !l.hidden : !open; foldOpen[id] = !l.hidden;
+  l.hidden = open === undefined ? !l.hidden : !open; foldOpen[tab + "." + id] = !l.hidden;
   const b = el || $(`[data-act="listToggle"][data-fold="${id}"]`) || $('[data-act="listToggle"]:not([data-fold])');
   if (b) { b.setAttribute("aria-expanded", !l.hidden); const c = b.querySelector(".chev"); if (c) c.style.transform = l.hidden ? "" : "rotate(90deg)"; }
   if (id === "tlBody" && !l.hidden) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
@@ -682,7 +686,7 @@ function profileSave() {
   const y = $("#pDiag").value.trim();
   if (y && !/^(19|20)\d\d$/.test(y)) { toast("Year should look like 2011"); return; }
   data.profile = stamp({ diagYear: y, extentNow: segVal("pNow"), extentMax: segVal("pMax"), symptomsEver: $$("#pSym button[aria-pressed=true]").map((b) => b.dataset.l) });
-  save("Saved"); closeSheet(); render();
+  save("Saved"); doneEdit();
 }
 function momentForm(m, type) {
   type = m ? m.type : type || "colonoscopy";
@@ -718,7 +722,7 @@ function momentSave(id, type) {
     Object.assign(m, { when, details: det, note: $("#mNoteIn").value.trim() }); stamp(m);
     if (type === "diagnosis" && !data.profile.diagYear) { data.profile.diagYear = when.slice(0, 4); if (det.extent && !data.profile.extentNow) data.profile.extentNow = det.extent; }
   }
-  save(id ? "Saved" : "Added to your history"); closeSheet(); render();
+  save(id ? "Saved" : "Added to your history"); doneEdit();
 }
 function flareForm(f) {
   momentForm({ id: f.id, type: "flare", when: f.start, details: { end: f.end, sev: f.sev }, note: f.note }, "flare");
@@ -1227,7 +1231,7 @@ function wipe() {
 }
 /* ---------- actions ---------- */
 const byId = (arr, id) => arr.find((x) => x.id === id);
-function tomb(arr, id, msg) { const x = byId(arr, id); if (x) { x.del = true; stamp(x); } save(msg); closeSheet(); render(); }
+function tomb(arr, id, msg) { reopen = null; const x = byId(arr, id); if (x) { x.del = true; stamp(x); } save(msg); closeSheet(); render(); }
 let xlsxP = null;
 function loadXlsx() {
   if (window.XLSX) return Promise.resolve();
@@ -1242,7 +1246,7 @@ function confirmTap(el) {
 }
 const NEEDS_CONFIRM = new Set(["medDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
 const ACTS = {
-  close: () => closeSheet(),
+  close: () => { reopen = null; closeSheet(); },
   settings: () => settingsSheet(),
   syncSave: () => syncSave(),
   syncOff: () => syncOff(),
@@ -1269,11 +1273,11 @@ const ACTS = {
   medDose: (el) => medDose(el.dataset.id),
   medStop: (el) => medStop(el.dataset.id),
   medFix: (el) => medForm(byId(data.meds, el.dataset.id)),
-  medEdit: (el) => { const m = byId(data.meds, el.dataset.id); if (m) medActions(m); },
-  momentEdit: (el) => { const m = byId(data.moments, el.dataset.id); if (m) momentForm(m); },
-  flareEdit: (el) => { const f = byId(data.flares, el.dataset.id); if (f) flareForm(f); },
+  medEdit: (el) => { const m = byId(data.meds, el.dataset.id); if (m) { medActions(m); reopen = () => { const x = byId(data.meds, m.id); if (x && !x.del) medView(x); }; } },
+  momentEdit: (el) => { const m = byId(data.moments, el.dataset.id); if (m) { momentForm(m); reopen = () => { const x = byId(data.moments, m.id); if (x && !x.del) momentView(x); }; } },
+  flareEdit: (el) => { const f = byId(data.flares, el.dataset.id); if (f) { flareForm(f); reopen = () => { const x = byId(data.flares, f.id); if (x && !x.del) flareView(x); }; } },
   /* History */
-  profileEdit: () => profileEdit(),
+  profileEdit: () => { profileEdit(); reopen = aboutOpen; },
   aboutOpen: () => aboutOpen(),
   listToggle: (el) => listToggle(el),
   profileSave: () => profileSave(),
@@ -1283,7 +1287,7 @@ const ACTS = {
   flareDelete: (el) => tomb(data.flares, el.dataset.id, "Flare deleted"),
   /* Doctor */
   helplineEdit: () => helplineEdit(),
-  helplineSave: () => { data.helpline = stamp({ number: $("#hlNum").value.trim(), hours: $("#hlHrs").value.trim() }); save("Saved"); closeSheet(); render(); },
+  helplineSave: () => { data.helpline = stamp({ number: $("#hlNum").value.trim(), hours: $("#hlHrs").value.trim() }); save("Saved"); doneEdit(); },
   meEdit: () => meEdit(),
   meSave: () => {
     const nhs = $("#meNhs").value.replace(/\s/g, "");
@@ -1302,8 +1306,8 @@ document.addEventListener("click", (e) => {
     if (NEEDS_CONFIRM.has(a.dataset.act) && !confirmTap(a)) return;
     e.preventDefault(); ACTS[a.dataset.act](a); return;
   }
-  const t = e.target.closest("[data-tab]"); if (t) { if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
-  if (e.target.id === "scrim") { closeSheet(); return; }
+  const t = e.target.closest("[data-tab]"); if (t) { reopen = null; if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
+  if (e.target.id === "scrim") { reopen = null; closeSheet(); return; }
   const day = e.target.closest("[data-day]"); if (day) { viewDay = day.dataset.day; go("today"); return; }
   const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medView(m); return; }
   const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
@@ -1313,13 +1317,33 @@ document.addEventListener("click", (e) => {
   const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", b === zm); drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; return; }
   const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }
 });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) { reopen = null; closeSheet(); } });
 
 /* No pinch or double-tap zoom (iPhone ignores the viewport setting in Safari, so block the gestures too). */
 ["gesturestart", "gesturechange"].forEach((t) => document.addEventListener(t, (e) => e.preventDefault()));
 
+/* ---------- keep your place ---------- */
+let curView = null;
+const VIEWS = { med: [() => data.meds, (x) => medView(x)], moment: [() => data.moments, (x) => momentView(x)], flare: [() => data.flares, (x) => flareView(x)] };
+for (const [k, fn] of [["medView", "med"], ["momentView", "moment"], ["flareView", "flare"]]) { const orig = window[k]; window[k] = (x) => { orig(x); curView = [fn, x.id]; }; }
+for (const k of ["aboutOpen", "steroidOpen"]) { const orig = window[k]; window[k] = () => { orig(); curView = [k]; }; }
+{ const oc = closeSheet; window.closeSheet = () => { oc(); curView = null; }; }
+function rememberPlace() { LS.set("gl.where", { tab, y: window.scrollY, folds: foldOpen, view: !$("#sheet").hidden ? curView : null, at: Date.now() }); }
+let placeT = null;
+window.addEventListener("scroll", () => { clearTimeout(placeT); placeT = setTimeout(rememberPlace, 400); }, { passive: true });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") rememberPlace(); });
+window.addEventListener("pagehide", rememberPlace);
+
 /* ---------- start ---------- */
+const where = LS.get("gl.where", null), back = where && Date.now() - where.at < 30 * 60 * 1000 && where.tab === tab;
+if (back) Object.assign(foldOpen, where.folds || {});
 render();
+if (back) {
+  requestAnimationFrame(() => window.scrollTo(0, where.y || 0));
+  const v = where.view;
+  if (v && VIEWS[v[0]]) { const x = byId(VIEWS[v[0]][0](), v[1]); if (x && !x.del) VIEWS[v[0]][1](x); }
+  else if (v && (v[0] === "aboutOpen" || v[0] === "steroidOpen")) window[v[0]]();
+}
 setSync(connected() ? (dirty ? "ok" : "ok") : "off");
 if (connected()) sync();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

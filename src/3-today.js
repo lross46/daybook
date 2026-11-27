@@ -13,6 +13,7 @@ function render() {
   $("#ttl").textContent = TITLES[tab];
   $("#hsub").textContent = fmtDay(todayIso()).replace(/^(\w+) /, (m, d) => ({ Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" }[d] + " "));
   ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
+  for (const b of $$('[data-act="listToggle"]')) { const id = b.dataset.fold || "evList", l = $("#" + id); if (foldOpen[tab + "." + id] && l && l.hidden) listToggle(b, true); }
 }
 function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); }
 

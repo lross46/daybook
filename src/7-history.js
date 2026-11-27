@@ -103,11 +103,11 @@ function aboutOpen() {
 }
 /* folded sections stay open while the tab redraws (e.g. after ticking a question) */
 const foldOpen = {};
-const foldHead = (id, title, sub) => `<button class="about fold" data-act="listToggle" data-fold="${id}" aria-expanded="${!!foldOpen[id]}"><span class="grow"><b>${esc(title)}</b><span class="sub">${esc(sub)}</span></span><span class="chev" aria-hidden="true"${foldOpen[id] ? ' style="transform:rotate(90deg)"' : ""}>›</span></button>`;
+const foldHead = (id, title, sub) => `<button class="about fold" data-act="listToggle" data-fold="${id}" aria-expanded="${!!foldOpen[tab + "." + id]}"><span class="grow"><b>${esc(title)}</b><span class="sub">${esc(sub)}</span></span><span class="chev" aria-hidden="true"${foldOpen[id] ? ' style="transform:rotate(90deg)"' : ""}>›</span></button>`;
 /* open or close a folded section: the button names its section with data-fold (default: the list) */
 function listToggle(el, open) {
   const id = el?.dataset.fold || "evList", l = $("#" + id); if (!l) return;
-  l.hidden = open === undefined ? !l.hidden : !open; foldOpen[id] = !l.hidden;
+  l.hidden = open === undefined ? !l.hidden : !open; foldOpen[tab + "." + id] = !l.hidden;
   const b = el || $(`[data-act="listToggle"][data-fold="${id}"]`) || $('[data-act="listToggle"]:not([data-fold])');
   if (b) { b.setAttribute("aria-expanded", !l.hidden); const c = b.querySelector(".chev"); if (c) c.style.transform = l.hidden ? "" : "rotate(90deg)"; }
   if (id === "tlBody" && !l.hidden) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
@@ -127,7 +127,7 @@ function profileSave() {
   const y = $("#pDiag").value.trim();
   if (y && !/^(19|20)\d\d$/.test(y)) { toast("Year should look like 2011"); return; }
   data.profile = stamp({ diagYear: y, extentNow: segVal("pNow"), extentMax: segVal("pMax"), symptomsEver: $$("#pSym button[aria-pressed=true]").map((b) => b.dataset.l) });
-  save("Saved"); closeSheet(); render();
+  save("Saved"); doneEdit();
 }
 function momentForm(m, type) {
   type = m ? m.type : type || "colonoscopy";
@@ -163,7 +163,7 @@ function momentSave(id, type) {
     Object.assign(m, { when, details: det, note: $("#mNoteIn").value.trim() }); stamp(m);
     if (type === "diagnosis" && !data.profile.diagYear) { data.profile.diagYear = when.slice(0, 4); if (det.extent && !data.profile.extentNow) data.profile.extentNow = det.extent; }
   }
-  save(id ? "Saved" : "Added to your history"); closeSheet(); render();
+  save(id ? "Saved" : "Added to your history"); doneEdit();
 }
 function flareForm(f) {
   momentForm({ id: f.id, type: "flare", when: f.start, details: { end: f.end, sev: f.sev }, note: f.note }, "flare");

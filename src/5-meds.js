@@ -143,7 +143,7 @@ function medSave(id) {
   let m = id && data.meds.find((x) => x.id === id);
   if (!m) { m = { id: uid(), changes: [], color: live(data.meds).filter((x) => x.name.toLowerCase() !== name.toLowerCase()).length % MED_COLORS.length }; const same = live(data.meds).find((x) => x.name.toLowerCase() === name.toLowerCase()); if (same) m.color = same.color; data.meds.push(m); }
   Object.assign(m, { name: name[0].toUpperCase() + name.slice(1), form: segVal("mForm"), dose: $("#mDose").value.trim(), freq: $("#mFreq").value.trim(), start, stop, why: now ? "" : chipVal("mWhy"), note: now ? "" : $("#mNote").value.trim() });
-  stamp(m); save(id ? "Saved" : "Medicine added"); closeSheet(); render();
+  stamp(m); save(id ? "Saved" : "Medicine added"); doneEdit();
 }
 function medActions(m) {
   if (m.stop) return medForm(m);
@@ -158,10 +158,10 @@ function medDose(id) {
   const m = data.meds.find((x) => x.id === id), dose = $("#cDose").value.trim(), freq = $("#cFreq").value.trim(), from = $("#cFrom").value || todayIso();
   if (!dose) { toast("Add the new dose"); return; }
   m.changes = m.changes || []; m.changes.push({ from, dose, freq }); m.changes.sort((a, b) => (a.from < b.from ? -1 : 1));
-  stamp(m); save("Dose changed"); closeSheet(); render();
+  stamp(m); save("Dose changed"); doneEdit();
 }
 function medStop(id) {
   const m = data.meds.find((x) => x.id === id), d = $("#sDate").value || todayIso();
   m.stop = d.slice(0, 7); m.stopDay = d; m.why = chipVal("sWhy"); m.note = $("#sNote").value.trim();
-  stamp(m); save("Stopped. Moved to Tried before"); closeSheet(); render();
+  stamp(m); save("Stopped. Moved to Tried before"); doneEdit();
 }

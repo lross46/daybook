@@ -1,6 +1,6 @@
 /* ---------- actions ---------- */
 const byId = (arr, id) => arr.find((x) => x.id === id);
-function tomb(arr, id, msg) { const x = byId(arr, id); if (x) { x.del = true; stamp(x); } save(msg); closeSheet(); render(); }
+function tomb(arr, id, msg) { reopen = null; const x = byId(arr, id); if (x) { x.del = true; stamp(x); } save(msg); closeSheet(); render(); }
 let xlsxP = null;
 function loadXlsx() {
   if (window.XLSX) return Promise.resolve();
@@ -15,7 +15,7 @@ function confirmTap(el) {
 }
 const NEEDS_CONFIRM = new Set(["medDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
 const ACTS = {
-  close: () => closeSheet(),
+  close: () => { reopen = null; closeSheet(); },
   settings: () => settingsSheet(),
   syncSave: () => syncSave(),
   syncOff: () => syncOff(),
@@ -42,11 +42,11 @@ const ACTS = {
   medDose: (el) => medDose(el.dataset.id),
   medStop: (el) => medStop(el.dataset.id),
   medFix: (el) => medForm(byId(data.meds, el.dataset.id)),
-  medEdit: (el) => { const m = byId(data.meds, el.dataset.id); if (m) medActions(m); },
-  momentEdit: (el) => { const m = byId(data.moments, el.dataset.id); if (m) momentForm(m); },
-  flareEdit: (el) => { const f = byId(data.flares, el.dataset.id); if (f) flareForm(f); },
+  medEdit: (el) => { const m = byId(data.meds, el.dataset.id); if (m) { medActions(m); reopen = () => { const x = byId(data.meds, m.id); if (x && !x.del) medView(x); }; } },
+  momentEdit: (el) => { const m = byId(data.moments, el.dataset.id); if (m) { momentForm(m); reopen = () => { const x = byId(data.moments, m.id); if (x && !x.del) momentView(x); }; } },
+  flareEdit: (el) => { const f = byId(data.flares, el.dataset.id); if (f) { flareForm(f); reopen = () => { const x = byId(data.flares, f.id); if (x && !x.del) flareView(x); }; } },
   /* History */
-  profileEdit: () => profileEdit(),
+  profileEdit: () => { profileEdit(); reopen = aboutOpen; },
   aboutOpen: () => aboutOpen(),
   listToggle: (el) => listToggle(el),
   profileSave: () => profileSave(),
@@ -56,7 +56,7 @@ const ACTS = {
   flareDelete: (el) => tomb(data.flares, el.dataset.id, "Flare deleted"),
   /* Doctor */
   helplineEdit: () => helplineEdit(),
-  helplineSave: () => { data.helpline = stamp({ number: $("#hlNum").value.trim(), hours: $("#hlHrs").value.trim() }); save("Saved"); closeSheet(); render(); },
+  helplineSave: () => { data.helpline = stamp({ number: $("#hlNum").value.trim(), hours: $("#hlHrs").value.trim() }); save("Saved"); doneEdit(); },
   meEdit: () => meEdit(),
   meSave: () => {
     const nhs = $("#meNhs").value.replace(/\s/g, "");
@@ -75,8 +75,8 @@ document.addEventListener("click", (e) => {
     if (NEEDS_CONFIRM.has(a.dataset.act) && !confirmTap(a)) return;
     e.preventDefault(); ACTS[a.dataset.act](a); return;
   }
-  const t = e.target.closest("[data-tab]"); if (t) { if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
-  if (e.target.id === "scrim") { closeSheet(); return; }
+  const t = e.target.closest("[data-tab]"); if (t) { reopen = null; if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
+  if (e.target.id === "scrim") { reopen = null; closeSheet(); return; }
   const day = e.target.closest("[data-day]"); if (day) { viewDay = day.dataset.day; go("today"); return; }
   const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medView(m); return; }
   const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
@@ -86,13 +86,33 @@ document.addEventListener("click", (e) => {
   const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", b === zm); drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; return; }
   const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }
 });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) { reopen = null; closeSheet(); } });
 
 /* No pinch or double-tap zoom (iPhone ignores the viewport setting in Safari, so block the gestures too). */
 ["gesturestart", "gesturechange"].forEach((t) => document.addEventListener(t, (e) => e.preventDefault()));
 
+/* ---------- keep your place ---------- */
+let curView = null;
+const VIEWS = { med: [() => data.meds, (x) => medView(x)], moment: [() => data.moments, (x) => momentView(x)], flare: [() => data.flares, (x) => flareView(x)] };
+for (const [k, fn] of [["medView", "med"], ["momentView", "moment"], ["flareView", "flare"]]) { const orig = window[k]; window[k] = (x) => { orig(x); curView = [fn, x.id]; }; }
+for (const k of ["aboutOpen", "steroidOpen"]) { const orig = window[k]; window[k] = () => { orig(); curView = [k]; }; }
+{ const oc = closeSheet; window.closeSheet = () => { oc(); curView = null; }; }
+function rememberPlace() { LS.set("gl.where", { tab, y: window.scrollY, folds: foldOpen, view: !$("#sheet").hidden ? curView : null, at: Date.now() }); }
+let placeT = null;
+window.addEventListener("scroll", () => { clearTimeout(placeT); placeT = setTimeout(rememberPlace, 400); }, { passive: true });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") rememberPlace(); });
+window.addEventListener("pagehide", rememberPlace);
+
 /* ---------- start ---------- */
+const where = LS.get("gl.where", null), back = where && Date.now() - where.at < 30 * 60 * 1000 && where.tab === tab;
+if (back) Object.assign(foldOpen, where.folds || {});
 render();
+if (back) {
+  requestAnimationFrame(() => window.scrollTo(0, where.y || 0));
+  const v = where.view;
+  if (v && VIEWS[v[0]]) { const x = byId(VIEWS[v[0]][0](), v[1]); if (x && !x.del) VIEWS[v[0]][1](x); }
+  else if (v && (v[0] === "aboutOpen" || v[0] === "steroidOpen")) window[v[0]]();
+}
 setSync(connected() ? (dirty ? "ok" : "ok") : "off");
 if (connected()) sync();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

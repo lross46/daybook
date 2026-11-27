@@ -311,6 +311,7 @@ function barChart(keys, opts = {}) {
     const h = Math.max(2, y(0) - y(d.stools));
     s += `<rect x="${x}" y="${y(0) - h}" width="${w}" height="${h}" rx="${Math.min(3, w / 3)}" fill="${SC[lvl(sccai(d))]}"/>`;
     if (d.blood && bw > 5) s += `<path transform="translate(${x + w / 2 - 4} ${y(0) - h - 13}) scale(.25)" d="${dropPath}" fill="var(--blood)"/>`;
+    else if (d.blood) s += `<rect x="${x}" y="${y(0) + 2}" width="${Math.max(1.5, w)}" height="5" fill="var(--blood)"/>`; /* too narrow for a drop: a red tick under the bar */
   });
   const lab = [[keys[0], 0, "start"], [keys[Math.floor(n / 2)], Math.floor(n / 2), "middle"], [keys[n - 1], n - 1, "end"]];
   lab.forEach(([k, i, a]) => s += `<text x="${L + i * bw + bw / 2}" y="${H - 6}" font-size="10" text-anchor="${a}" fill="var(--muted)">${k === todayIso() ? "Today" : parseIso(k).getDate() + " " + MONTHS[parseIso(k).getMonth()]}</text>`);

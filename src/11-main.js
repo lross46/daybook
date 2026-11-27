@@ -91,28 +91,17 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 /* No pinch or double-tap zoom (iPhone ignores the viewport setting in Safari, so block the gestures too). */
 ["gesturestart", "gesturechange"].forEach((t) => document.addEventListener(t, (e) => e.preventDefault()));
 
-/* ---------- keep your place ---------- */
-let curView = null;
-const VIEWS = { med: [() => data.meds, (x) => medView(x)], moment: [() => data.moments, (x) => momentView(x)], flare: [() => data.flares, (x) => flareView(x)] };
-for (const [k, fn] of [["medView", "med"], ["momentView", "moment"], ["flareView", "flare"]]) { const orig = window[k]; window[k] = (x) => { orig(x); curView = [fn, x.id]; }; }
-for (const k of ["aboutOpen", "steroidOpen"]) { const orig = window[k]; window[k] = () => { orig(); curView = [k]; }; }
-{ const oc = closeSheet; window.closeSheet = () => { oc(); curView = null; }; }
-function rememberPlace() { LS.set("gl.where", { tab, y: window.scrollY, folds: foldOpen, view: !$("#sheet").hidden ? curView : null, at: Date.now() }); }
-let placeT = null;
-window.addEventListener("scroll", () => { clearTimeout(placeT); placeT = setTimeout(rememberPlace, 400); }, { passive: true });
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") rememberPlace(); });
-window.addEventListener("pagehide", rememberPlace);
+/* ---------- fresh start ----------
+   Opening the app always starts clean on Today. If the app was only in the background,
+   coming back after a minute or more resets it the same way. */
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
+});
 
 /* ---------- start ---------- */
-const where = LS.get("gl.where", null), back = where && Date.now() - where.at < 30 * 60 * 1000 && where.tab === tab;
-if (back) Object.assign(foldOpen, where.folds || {});
 render();
-if (back) {
-  requestAnimationFrame(() => window.scrollTo(0, where.y || 0));
-  const v = where.view;
-  if (v && VIEWS[v[0]]) { const x = byId(VIEWS[v[0]][0](), v[1]); if (x && !x.del) VIEWS[v[0]][1](x); }
-  else if (v && (v[0] === "aboutOpen" || v[0] === "steroidOpen")) window[v[0]]();
-}
 setSync(connected() ? (dirty ? "ok" : "ok") : "off");
 if (connected()) sync();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

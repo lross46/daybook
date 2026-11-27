@@ -197,7 +197,7 @@ I.gantt='<path d="M4 6h9M8 12h12M4 18h7"/>';
 /* ---------- navigation ---------- */
 const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
 const TITLES = { today: "Today", trends: "Trends", meds: "Medicines", timeline: "Timeline", history: "My history", doctor: "My IBD team" };
-let tab = LS.get("gl.tab", "today"); if (tab === "timeline") tab = "history";
+let tab = "today"; /* the app always opens on Today */
 let viewDay = todayIso();
 function renderNav() {
   $("#nav").innerHTML = TABS.map(([k, l, p]) => `<button data-tab="${k}" ${k === tab ? 'aria-current="page"' : ""}>${S("0 0 24 24", p, stroke)}${l}</button>`).join("");
@@ -210,7 +210,7 @@ function render() {
   ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
   for (const b of $$('[data-act="listToggle"]')) { const id = b.dataset.fold || "evList", l = $("#" + id); if (foldOpen[tab + "." + id] && l && l.hidden) listToggle(b, true); }
 }
-function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); }
+function go(t) { tab = t; window.scrollTo(0, 0); render(); }
 
 /* ---------- Today ---------- */
 const getDay = (k) => (dayLogged(k) ? data.days[k] : null);
@@ -1327,28 +1327,17 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 /* No pinch or double-tap zoom (iPhone ignores the viewport setting in Safari, so block the gestures too). */
 ["gesturestart", "gesturechange"].forEach((t) => document.addEventListener(t, (e) => e.preventDefault()));
 
-/* ---------- keep your place ---------- */
-let curView = null;
-const VIEWS = { med: [() => data.meds, (x) => medView(x)], moment: [() => data.moments, (x) => momentView(x)], flare: [() => data.flares, (x) => flareView(x)] };
-for (const [k, fn] of [["medView", "med"], ["momentView", "moment"], ["flareView", "flare"]]) { const orig = window[k]; window[k] = (x) => { orig(x); curView = [fn, x.id]; }; }
-for (const k of ["aboutOpen", "steroidOpen"]) { const orig = window[k]; window[k] = () => { orig(); curView = [k]; }; }
-{ const oc = closeSheet; window.closeSheet = () => { oc(); curView = null; }; }
-function rememberPlace() { LS.set("gl.where", { tab, y: window.scrollY, folds: foldOpen, view: !$("#sheet").hidden ? curView : null, at: Date.now() }); }
-let placeT = null;
-window.addEventListener("scroll", () => { clearTimeout(placeT); placeT = setTimeout(rememberPlace, 400); }, { passive: true });
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") rememberPlace(); });
-window.addEventListener("pagehide", rememberPlace);
+/* ---------- fresh start ----------
+   Opening the app always starts clean on Today. If the app was only in the background,
+   coming back after a minute or more resets it the same way. */
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
+});
 
 /* ---------- start ---------- */
-const where = LS.get("gl.where", null), back = where && Date.now() - where.at < 30 * 60 * 1000 && where.tab === tab;
-if (back) Object.assign(foldOpen, where.folds || {});
 render();
-if (back) {
-  requestAnimationFrame(() => window.scrollTo(0, where.y || 0));
-  const v = where.view;
-  if (v && VIEWS[v[0]]) { const x = byId(VIEWS[v[0]][0](), v[1]); if (x && !x.del) VIEWS[v[0]][1](x); }
-  else if (v && (v[0] === "aboutOpen" || v[0] === "steroidOpen")) window[v[0]]();
-}
 setSync(connected() ? (dirty ? "ok" : "ok") : "off");
 if (connected()) sync();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

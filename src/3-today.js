@@ -2,7 +2,7 @@
 /* ---------- navigation ---------- */
 const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
 const TITLES = { today: "Today", trends: "Trends", meds: "Medicines", timeline: "Timeline", history: "My history", doctor: "My IBD team" };
-let tab = LS.get("gl.tab", "today"); if (tab === "timeline") tab = "history";
+let tab = "today"; /* the app always opens on Today */
 let viewDay = todayIso();
 function renderNav() {
   $("#nav").innerHTML = TABS.map(([k, l, p]) => `<button data-tab="${k}" ${k === tab ? 'aria-current="page"' : ""}>${S("0 0 24 24", p, stroke)}${l}</button>`).join("");
@@ -15,7 +15,7 @@ function render() {
   ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
   for (const b of $$('[data-act="listToggle"]')) { const id = b.dataset.fold || "evList", l = $("#" + id); if (foldOpen[tab + "." + id] && l && l.hidden) listToggle(b, true); }
 }
-function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); }
+function go(t) { tab = t; window.scrollTo(0, 0); render(); }
 
 /* ---------- Today ---------- */
 const getDay = (k) => (dayLogged(k) ? data.days[k] : null);

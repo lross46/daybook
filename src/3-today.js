@@ -11,6 +11,7 @@ function render() {
   if (!TITLES[tab]) tab = "today";
   renderNav(); document.documentElement.dataset.page = tab;
   $("#ttl").textContent = TITLES[tab];
+  $("#hsub").hidden = tab === "today"; /* Today's date already shows in the day picker */
   $("#hsub").textContent = fmtDay(todayIso()).replace(/^(\w+) /, (m, d) => ({ Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" }[d] + " "));
   ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
   for (const b of $$('[data-act="listToggle"]')) { const id = b.dataset.fold || "evList", l = $("#" + id); if (foldOpen[tab + "." + id] && l && l.hidden) listToggle(b, true); }
@@ -30,12 +31,12 @@ function heroHtml() {
   if (f) {
     const n = daysBetween(f.start, t) + 1;
     color = "var(--mod)"; title = "In a flare"; sub = `Started ${fmtDay(f.start)}`;
-    ring = `<circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="14"/><circle cx="66" cy="66" r="${r}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${c * Math.min(n, 30) / 30} ${c}" transform="rotate(-90 66 66)"/><text x="66" y="56" text-anchor="middle" font-size="17" fill="var(--muted)">Day</text><text x="66" y="96" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-weight="700" font-size="44" fill="var(--fg)">${n}</text>`;
+    ring = `<circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="14"/><circle cx="66" cy="66" r="${r}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${c * Math.min(n, 30) / 30} ${c}" transform="rotate(-90 66 66)"/><text x="66" y="56" text-anchor="middle" font-size="17" fill="var(--muted)">Day</text><text x="66" y="96" text-anchor="middle" font-weight="700" font-size="44" fill="var(--fg)">${n}</text>`;
   } else {
     const last = live(data.flares).filter((x) => x.end).sort((a, b) => (a.end < b.end ? 1 : -1))[0];
     const n = last ? daysBetween(last.end, t) : null;
     color = "var(--ok)"; title = "No flare"; sub = last ? `Last flare ended ${fmtDate(last.end)}` : "Tap below if a flare starts";
-    ring = `<circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--ok)" stroke-width="14" opacity="${n == null ? .25 : 1}"/>` + (n == null ? `<path d="M46 68l14 14 26-30" fill="none" stroke="var(--ok)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>` : `<text x="66" y="78" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-weight="700" font-size="${n > 999 ? 30 : 40}" fill="var(--fg)">${n}</text><text x="66" y="98" text-anchor="middle" font-size="12" fill="var(--muted)">days calm</text>`);
+    ring = `<circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--ok)" stroke-width="14" opacity="${n == null ? .25 : 1}"/>` + (n == null ? `<path d="M46 68l14 14 26-30" fill="none" stroke="var(--ok)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>` : `<text x="66" y="78" text-anchor="middle" font-weight="700" font-size="${n > 999 ? 30 : 40}" fill="var(--fg)">${n}</text><text x="66" y="98" text-anchor="middle" font-size="12" fill="var(--muted)">days calm</text>`);
   }
   return `<div class="card"><div class="hero">${S("0 0 132 132", ring)}<div style="min-width:0"><div class="label">Right now</div><div class="state" style="color:${color}">${title}</div><div class="sub">${sub}</div></div></div></div>`;
 }
@@ -47,6 +48,7 @@ function renderToday() {
   const f = openFlare();
   $("#main").innerHTML = `
   <div class="row"><div class="daynav"><button data-act="dayPrev" aria-label="Previous day">‹</button><div><div class="name">${isToday ? "Today" : esc(fmtDay(k))}</div><div class="sub">${isToday ? esc(fmtDate(k)) : dayLogged(k) ? "Logged" : "Not logged"}</div></div><button data-act="dayNext" aria-label="Next day" ${isToday ? "disabled" : ""}>›</button></div>${isToday ? "" : `<button class="linkbtn" data-act="dayToday">Back to today</button>`}</div>
+  ${isToday ? flareBar(f) : ""}
   <div class="card">
     <div class="row"><div><div class="label">Stools ${isToday ? "today" : "that day"}</div><div class="sub">${vs.length ? "Tap one to add type, blood, mucus or urgency" : "Tap + Stool each time you go"}</div></div><div class="count">${d.stools}</div></div>
     ${vs.length ? `<div class="visits">${vs.map((v) => visitRow(v)).join("")}</div>` : ""}
@@ -61,9 +63,14 @@ function renderToday() {
   <div class="card"><div class="label">Anywhere else?</div><div class="tags" data-multi="extra">${EXTRA.map(([key, l]) => `<button data-v="${key}" aria-pressed="${(d.extra || []).includes(key)}">${ico(key)}${l}</button>`).join("")}</div>${noteBlock("noteExtra", d.noteExtra, "e.g. left knee sore since Tuesday")}</div>
   <div class="card"><div class="label">Anything that might matter?</div><div class="tags" data-multi="tags">${TAGS.map(([key, l]) => `<button data-v="${key}" aria-pressed="${(d.tags || []).includes(key)}">${ico(key)}${l}</button>`).join("")}</div>${noteBlock("noteTags", d.noteTags, "e.g. what you ate, how you slept")}</div>
   <div class="saved" id="savedTxt">${dayLogged(k) ? "Saved on this phone as you go" : "Nothing logged yet. Everything saves as you tap."}</div>
-  ${isToday ? `<div class="sub" style="text-align:center">${f ? `In a flare since ${esc(fmtDay(f.start))} · day ${daysBetween(f.start, todayIso()) + 1}` : "No flare right now"}</div>${f ? `<button class="btn flare" data-act="flareEnd">Flare ended today</button>` : `<button class="btn flare" data-act="flareStart">A flare started today</button>`}` : ""}
   ${dayLogged(k) ? `<button class="linkbtn" style="align-self:center;color:var(--muted)" data-act="clearDay">Clear this day</button>` : ""}`;
   paintPain();
+}
+/* flare status as a slim banner under the date, with its button right there */
+function flareBar(f) {
+  if (f) return `<div class="flarebar on"><span class="fi"></span><span class="grow"><b>In a flare · day ${daysBetween(f.start, todayIso()) + 1}</b><span class="sub">Since ${esc(fmtDay(f.start))}</span></span><button class="btn flare" data-act="flareEnd">It ended today</button></div>`;
+  const last = live(data.flares).filter((x) => x.end).sort((a, b) => (a.end < b.end ? 1 : -1))[0];
+  return `<div class="flarebar"><span class="fi"></span><span class="grow"><b>Not in a flare</b><span class="sub">${last ? `Last one ended ${esc(fmtRough(last.end))}` : "No flares logged"}</span></span><button class="btn flare" data-act="flareStart">Flare started</button></div>`;
 }
 function noteBlock(key, val, ph) {
   return val ? `<textarea class="note" data-note="${key}" placeholder="${esc(ph)}">${esc(val)}</textarea>` : `<button class="noteBtn" data-act="openNote" data-key="${key}">+ Add a note</button><textarea class="note" data-note="${key}" hidden placeholder="${esc(ph)}"></textarea>`;

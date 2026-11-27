@@ -70,7 +70,7 @@ function lifeStrip(w = 360) {
     if (m.type === "hospital" || m.type === "surgery") s += `<g transform="translate(${x(roughYear(m.when)) - 9} 4)">${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="18" height="18" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
   }
   const step = y1 - y0 > 12 ? 2 : 1;
-  for (let yr = y0; yr <= y1; yr += step) s += `<text x="${x(yr)}" y="114" font-size="9.5" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${yr}</text>`;
+  for (let yr = y0; yr <= y1; yr += step) s += `<text x="${x(yr)}" y="114" font-size="11" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)">${yr}</text>`;
   return S(`0 0 ${w} 120`, s, `style="width:100%;min-width:340px;height:auto"`);
 }
 function profileRows() {

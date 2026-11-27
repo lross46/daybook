@@ -19,13 +19,14 @@
 <div class="app" id="app">
   <header>
     <div><h1 id="ttl">Today</h1><div class="sub" id="hsub"></div></div>
-    <button class="hdrbtn off" id="syncBtn" data-act="settings"><span id="syncTxt">On phone only</span></button>
+    <div class="hdr-r"><span class="tick" id="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Saved</span>
+    <button class="hdrbtn off" id="syncBtn" data-act="settings" aria-label="On phone only"><span id="syncTxt"></span></button></div>
   </header>
   <main id="main"></main>
 </div>
 <nav><div class="in" id="nav"></div></nav>
 <button class="wc" id="wcBtn" data-act="toilet" aria-label="Find a toilet">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><text x="12" y="12.5" font-size="7" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">WC</text></svg>Toilet</button>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><text x="12" y="12.5" font-size="7" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">WC</text></svg></button>
 <div class="scrim" id="scrim" hidden></div>
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -1,5 +1,5 @@
 /* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
-const LAYERS = [["meds", "Medicines", `<i style="background:var(--med1);height:6px;border-radius:3px;width:14px"></i>`], ["flares", "Flares", `<i style="background:var(--mod);opacity:.45"></i>`], ["scope", "Colonoscopy", "◆"], ["hosp", "Hospital / surgery", `<b style="color:var(--sev)">✚</b>`]];
+const LAYERS = [["meds", "Meds", "Medicines", `<i style="background:var(--med1);height:6px;border-radius:3px;width:14px"></i>`], ["flares", "Flares", "Flares", `<i style="background:var(--mod);opacity:.45"></i>`], ["scope", "Scopes", "Colonoscopies", "◆"], ["hosp", "Hospital", "Hospital stays and surgery", `<b style="color:var(--sev)">✚</b>`]];
 const SHOW_ALL = () => ({ meds: true, flares: true, scope: true, hosp: true });
 let chartShow = SHOW_ALL();
 function timelineCard() {
@@ -7,7 +7,7 @@ function timelineCard() {
     <div id="tlBody" style="display:flex;flex-direction:column;gap:10px">
     <div class="seg" id="zoomSeg" style="grid-template-columns:repeat(6,1fr)">${TL_ZOOMS.map(([l], i) => `<button data-tlz="${i}" aria-pressed="${i === tlZ}">${l}</button>`).join("")}</div>
     <div class="row" id="tlNav"><button class="navbtn" data-tlstep="-1" aria-label="Earlier">‹</button><b id="tlLbl" class="tllbl"></b><button class="navbtn" data-tlstep="1" aria-label="Later">›</button></div>
-    <div class="chips layers" role="group" aria-label="Show on the chart">${LAYERS.map(([k, l, sw]) => `<button type="button" data-layer="${k}" aria-pressed="${chartShow[k]}">${sw} ${l}</button>`).join("")}</div>
+    <div class="layers4" role="group" aria-label="Show on the chart">${LAYERS.map(([k, l, full, sw]) => `<button type="button" data-layer="${k}" aria-pressed="${chartShow[k]}" aria-label="${full}">${sw}${l}</button>`).join("")}</div>
     <div id="chartWrap"></div>
     <div class="sub">Slide the chart or the strip with your finger, or use the arrows. Tap a bar or mark to open it.</div></div></div>`;
 }
@@ -44,7 +44,7 @@ function drawChart() {
   const nm = [...new Set(live(data.meds).filter((x) => x.start).sort((a, b) => (roughSort(a.start) < roughSort(b.start) ? -1 : 1)).map((x) => x.name))];
   if (chartShow.meds) nm.forEach((n, i) => { for (const md of live(data.meds).filter((q) => q.name === n && q.start)) { const a = roughYear(md.start, "start"), b = md.stopDay ? roughYear(md.stopDay, "end") : md.stop ? roughYear(md.stop, "end") : roughYear(todayIso()); m += `<rect x="${mx(a)}" y="${4 + (i % 6) * 4}" width="${Math.max(1.5, mx(b) - mx(a))}" height="3" fill="${medColor(md)}"/>`; } });
   const step = f1 - f0 > 12 ? 2 : 1;
-  for (let y = Math.ceil(f0); y < f1; y += step) m += `<text x="${mx(y)}" y="40" font-size="9" text-anchor="middle" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">'${String(y).slice(2)}</text>`;
+  for (let y = Math.ceil(f0); y < f1; y += step) m += `<text x="${mx(y)}" y="41" font-size="11" text-anchor="middle" fill="var(--muted)">'${String(y).slice(2)}</text>`;
   if (win) m += `<rect x="${mx(win[0])}" y="1" width="${Math.max(6, mx(win[1]) - mx(win[0]))}" height="28" rx="4" fill="var(--accent)" fill-opacity=".14" stroke="var(--accent)" stroke-width="2"/>`;
   w.innerHTML = `<div id="ganttBox">${chart.replace("min-width:340px;", "")}</div><div class="tlmini" id="tlMini" role="button" aria-label="Whole history: tap to jump there">${S(`0 0 ${mw} 44`, m, 'style="width:100%;height:auto;display:block"')}</div>`;
 }

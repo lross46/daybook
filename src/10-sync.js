@@ -102,7 +102,12 @@ function setSync(s, msg = "") {
   if (s === "ok") { syncStatus.at = Date.now(); LS.set("gl.syncedAt", syncStatus.at); }
   const b = $("#syncBtn"); if (!b) return;
   b.className = "hdrbtn " + ({ off: "off", err: "err", offline: "err" }[s] || "");
-  $("#syncTxt").textContent = { off: "On phone only", busy: "Syncing…", ok: dirty ? "Saved on phone" : "Locked & synced", err: "Sync problem", offline: "Offline" }[s];
+  const k = s === "ok" && dirty ? "wait" : s, txt = { off: "On phone only", busy: "Syncing…", ok: "Locked & synced", wait: "Saved on phone, syncing soon", err: "Sync problem", offline: "Offline" }[k];
+  b.setAttribute("aria-label", txt + ". Tap for sync settings"); b.title = txt;
+  /* a small icon instead of words: phone = not synced, cloud + tick = synced, cloud + dot = waiting, cloud + ! = problem */
+  const cloud = '<path d="M7 18h10.5a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.4 9.1 4.5 4.5 0 0 0 7 18z"/>';
+  $("#syncTxt").innerHTML = k === "busy" ? '<span class="spin"></span>' : S("0 0 24 24", k === "off" ? '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>'
+    : cloud + ({ ok: '<path d="M9.5 13.2l2 2 3.5-3.7"/>', wait: '<circle cx="12" cy="13.5" r="1.4" fill="currentColor"/>', err: '<path d="M12 10.5v3M12 16v.01"/>', offline: '<path d="M12 10.5v3M12 16v.01"/>' }[k] || ""), 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"');
   const i = $("#syncInfo"); if (i) i.textContent = syncText();
 }
 function scheduleSync(ms = 15000) { clearTimeout(syncTimer); if (connected()) { syncTimer = setTimeout(sync, ms); setSync(syncStatus.s === "busy" ? "busy" : syncStatus.s === "off" ? "ok" : syncStatus.s); } }
@@ -152,7 +157,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 58</div>
+  <div class="sub">App version 59</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });

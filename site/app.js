@@ -45,8 +45,11 @@ function save(msg) {
   LS.set("gl.data", data);
   dirty = true; LS.set("gl.dirty", true);
   if (msg) toast(msg);
+  flashTick();
   if (typeof scheduleSync === "function") scheduleSync();
 }
+/* a brief "Saved" tick in the header after every change */
+function flashTick() { const t = document.getElementById("tick"); if (!t) return; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 1300); }
 const live = (arr) => arr.filter((x) => !x.del);
 const stamp = (o) => { o.at = Date.now(); return o; };
 
@@ -209,6 +212,7 @@ function render() {
   if (!TITLES[tab]) tab = "today";
   renderNav(); document.documentElement.dataset.page = tab;
   $("#ttl").textContent = TITLES[tab];
+  $("#hsub").hidden = tab === "today"; /* Today's date already shows in the day picker */
   $("#hsub").textContent = fmtDay(todayIso()).replace(/^(\w+) /, (m, d) => ({ Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" }[d] + " "));
   ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
   for (const b of $$('[data-act="listToggle"]')) { const id = b.dataset.fold || "evList", l = $("#" + id); if (foldOpen[tab + "." + id] && l && l.hidden) listToggle(b, true); }
@@ -228,12 +232,12 @@ function heroHtml() {
   if (f) {
     const n = daysBetween(f.start, t) + 1;
     color = "var(--mod)"; title = "In a flare"; sub = `Started ${fmtDay(f.start)}`;
-    ring = `<circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="14"/><circle cx="66" cy="66" r="${r}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${c * Math.min(n, 30) / 30} ${c}" transform="rotate(-90 66 66)"/><text x="66" y="56" text-anchor="middle" font-size="17" fill="var(--muted)">Day</text><text x="66" y="96" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-weight="700" font-size="44" fill="var(--fg)">${n}</text>`;
+    ring = `<circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="14"/><circle cx="66" cy="66" r="${r}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${c * Math.min(n, 30) / 30} ${c}" transform="rotate(-90 66 66)"/><text x="66" y="56" text-anchor="middle" font-size="17" fill="var(--muted)">Day</text><text x="66" y="96" text-anchor="middle" font-weight="700" font-size="44" fill="var(--fg)">${n}</text>`;
   } else {
     const last = live(data.flares).filter((x) => x.end).sort((a, b) => (a.end < b.end ? 1 : -1))[0];
     const n = last ? daysBetween(last.end, t) : null;
     color = "var(--ok)"; title = "No flare"; sub = last ? `Last flare ended ${fmtDate(last.end)}` : "Tap below if a flare starts";
-    ring = `<circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--ok)" stroke-width="14" opacity="${n == null ? .25 : 1}"/>` + (n == null ? `<path d="M46 68l14 14 26-30" fill="none" stroke="var(--ok)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>` : `<text x="66" y="78" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-weight="700" font-size="${n > 999 ? 30 : 40}" fill="var(--fg)">${n}</text><text x="66" y="98" text-anchor="middle" font-size="12" fill="var(--muted)">days calm</text>`);
+    ring = `<circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--ok)" stroke-width="14" opacity="${n == null ? .25 : 1}"/>` + (n == null ? `<path d="M46 68l14 14 26-30" fill="none" stroke="var(--ok)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>` : `<text x="66" y="78" text-anchor="middle" font-weight="700" font-size="${n > 999 ? 30 : 40}" fill="var(--fg)">${n}</text><text x="66" y="98" text-anchor="middle" font-size="12" fill="var(--muted)">days calm</text>`);
   }
   return `<div class="card"><div class="hero">${S("0 0 132 132", ring)}<div style="min-width:0"><div class="label">Right now</div><div class="state" style="color:${color}">${title}</div><div class="sub">${sub}</div></div></div></div>`;
 }
@@ -245,6 +249,7 @@ function renderToday() {
   const f = openFlare();
   $("#main").innerHTML = `
   <div class="row"><div class="daynav"><button data-act="dayPrev" aria-label="Previous day">‹</button><div><div class="name">${isToday ? "Today" : esc(fmtDay(k))}</div><div class="sub">${isToday ? esc(fmtDate(k)) : dayLogged(k) ? "Logged" : "Not logged"}</div></div><button data-act="dayNext" aria-label="Next day" ${isToday ? "disabled" : ""}>›</button></div>${isToday ? "" : `<button class="linkbtn" data-act="dayToday">Back to today</button>`}</div>
+  ${isToday ? flareBar(f) : ""}
   <div class="card">
     <div class="row"><div><div class="label">Stools ${isToday ? "today" : "that day"}</div><div class="sub">${vs.length ? "Tap one to add type, blood, mucus or urgency" : "Tap + Stool each time you go"}</div></div><div class="count">${d.stools}</div></div>
     ${vs.length ? `<div class="visits">${vs.map((v) => visitRow(v)).join("")}</div>` : ""}
@@ -259,9 +264,14 @@ function renderToday() {
   <div class="card"><div class="label">Anywhere else?</div><div class="tags" data-multi="extra">${EXTRA.map(([key, l]) => `<button data-v="${key}" aria-pressed="${(d.extra || []).includes(key)}">${ico(key)}${l}</button>`).join("")}</div>${noteBlock("noteExtra", d.noteExtra, "e.g. left knee sore since Tuesday")}</div>
   <div class="card"><div class="label">Anything that might matter?</div><div class="tags" data-multi="tags">${TAGS.map(([key, l]) => `<button data-v="${key}" aria-pressed="${(d.tags || []).includes(key)}">${ico(key)}${l}</button>`).join("")}</div>${noteBlock("noteTags", d.noteTags, "e.g. what you ate, how you slept")}</div>
   <div class="saved" id="savedTxt">${dayLogged(k) ? "Saved on this phone as you go" : "Nothing logged yet. Everything saves as you tap."}</div>
-  ${isToday ? `<div class="sub" style="text-align:center">${f ? `In a flare since ${esc(fmtDay(f.start))} · day ${daysBetween(f.start, todayIso()) + 1}` : "No flare right now"}</div>${f ? `<button class="btn flare" data-act="flareEnd">Flare ended today</button>` : `<button class="btn flare" data-act="flareStart">A flare started today</button>`}` : ""}
   ${dayLogged(k) ? `<button class="linkbtn" style="align-self:center;color:var(--muted)" data-act="clearDay">Clear this day</button>` : ""}`;
   paintPain();
+}
+/* flare status as a slim banner under the date, with its button right there */
+function flareBar(f) {
+  if (f) return `<div class="flarebar on"><span class="fi"></span><span class="grow"><b>In a flare · day ${daysBetween(f.start, todayIso()) + 1}</b><span class="sub">Since ${esc(fmtDay(f.start))}</span></span><button class="btn flare" data-act="flareEnd">It ended today</button></div>`;
+  const last = live(data.flares).filter((x) => x.end).sort((a, b) => (a.end < b.end ? 1 : -1))[0];
+  return `<div class="flarebar"><span class="fi"></span><span class="grow"><b>Not in a flare</b><span class="sub">${last ? `Last one ended ${esc(fmtRough(last.end))}` : "No flares logged"}</span></span><button class="btn flare" data-act="flareStart">Flare started</button></div>`;
 }
 function noteBlock(key, val, ph) {
   return val ? `<textarea class="note" data-note="${key}" placeholder="${esc(ph)}">${esc(val)}</textarea>` : `<button class="noteBtn" data-act="openNote" data-key="${key}">+ Add a note</button><textarea class="note" data-note="${key}" hidden placeholder="${esc(ph)}"></textarea>`;
@@ -379,24 +389,35 @@ document.addEventListener("change", (e) => { if (e.target.id === "pain") { const
 let calMonth = todayIso().slice(0, 7);
 function ring(p, c, big, small) {
   const r = 30, C = 2 * Math.PI * r;
-  return `<div class="ring">${S("0 0 76 76", `<circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="9"/><circle cx="38" cy="38" r="${r}" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C * Math.max(0, Math.min(1, p))} ${C}" transform="rotate(-90 38 38)"/><text x="38" y="43" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-weight="700" font-size="15" fill="var(--fg)">${big}</text>`)}<span>${small}</span></div>`;
+  return `<div class="ring">${S("0 0 76 76", `<circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="9"/><circle cx="38" cy="38" r="${r}" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C * Math.max(0, Math.min(1, p))} ${C}" transform="rotate(-90 38 38)"/><text x="38" y="43" text-anchor="middle" font-weight="700" font-size="15" fill="var(--fg)">${big}</text>`)}<span>${small}</span></div>`;
 }
 function lastNDays(n, end = todayIso()) { const out = []; for (let i = n - 1; i >= 0; i--) out.push(addDays(end, -i)); return out; }
+/* one week as one bar: average stools a day, coloured by its worst day; marks if any day had blood, mucus or a night */
+function weekOf(ks) {
+  const ds = ks.map((k) => getDay(k)).filter(Boolean); if (!ds.length) return null;
+  const avg = ds.reduce((a, d) => a + (d.stools || 0), 0) / ds.length;
+  return { stools: Math.round(avg * 10) / 10, worst: Math.max(...ds.map((d) => lvl(sccai(d)))), blood: ds.some((d) => d.blood), mucus: ds.some((d) => d.mucus), night: ds.some((d) => d.night > 0) ? 1 : 0, days: ds.length };
+}
+/* from 3 months up, daily bars turn into noise: show weeks instead (the last week ends on the window's last day) */
+const weekly = (keys) => keys.length > 45;
+function weekKeys(keys) { const out = []; for (let e = keys.length; e > 0; e -= 7) out.unshift(keys.slice(Math.max(0, e - 7), e)); return out; }
 function barChart(keys, opts = {}) {
-  const W = 360, H = opts.h || 210, L = 22, R = 6, T = 24, B = 34, n = keys.length, bw = (W - L - R) / n;
-  const vals = keys.map((k) => getDay(k));
+  const wk = weekly(keys), groups = wk ? weekKeys(keys) : keys.map((k) => [k]);
+  const W = 360, H = opts.h || 210, L = 24, R = 6, T = 26, B = 36, n = groups.length, bw = (W - L - R) / n;
+  const vals = wk ? groups.map(weekOf) : keys.map((k) => getDay(k));
   const max = Math.max(6, ...vals.map((d) => (d ? d.stools : 0)));
   const top = Math.ceil(max / 2) * 2, y = (v) => T + (H - T - B) * (1 - v / top);
   let s = "";
   // flare bands
   let i = 0;
-  while (i < n) { if (inFlare(keys[i])) { let j = i; while (j + 1 < n && inFlare(keys[j + 1])) j++; s += `<rect x="${L + i * bw}" y="${T - 18}" width="${(j - i + 1) * bw}" height="${H - B - T + 18}" rx="6" fill="var(--flare)"/><text x="${L + i * bw > W - 50 ? W - R - 2 : L + i * bw + 4}" text-anchor="${L + i * bw > W - 50 ? "end" : "start"}" y="${T - 6}" font-size="10.5" font-weight="600" fill="var(--mod)">Flare</text>`; i = j + 1; } else i++; }
-  for (let v = 0; v <= top; v += top > 10 ? 4 : 2) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-dasharray="${v ? "2 3" : ""}"/><text x="${L - 5}" y="${y(v) + 3.5}" font-size="10" text-anchor="end" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${v}</text>`;
+  const fl = (g) => g.some(inFlare);
+  while (i < n) { if (fl(groups[i])) { let j = i; while (j + 1 < n && fl(groups[j + 1])) j++; s += `<rect x="${L + i * bw}" y="${T - 20}" width="${(j - i + 1) * bw}" height="${H - B - T + 20}" rx="6" fill="var(--flare)"/><text x="${L + i * bw > W - 50 ? W - R - 2 : L + i * bw + 4}" text-anchor="${L + i * bw > W - 50 ? "end" : "start"}" y="${T - 7}" font-size="12.5" font-weight="600" fill="var(--mod)">Flare</text>`; i = j + 1; } else i++; }
+  for (let v = 0; v <= top; v += top > 10 ? 4 : 2) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-dasharray="${v ? "2 3" : ""}"/><text x="${L - 5}" y="${y(v) + 4}" font-size="12" text-anchor="end" fill="var(--muted)">${v}</text>`;
   vals.forEach((d, i) => {
     const x = L + i * bw + Math.min(1.5, bw * .15), w = Math.max(1, bw - Math.min(3, bw * .3));
     if (!d) { s += `<rect x="${x}" y="${y(0) - 2}" width="${w}" height="2" fill="var(--line)"/>`; return; }
     const h = Math.max(2, y(0) - y(d.stools));
-    s += `<rect x="${x}" y="${y(0) - h}" width="${w}" height="${h}" rx="${Math.min(3, w / 3)}" fill="${SC[lvl(sccai(d))]}"/>`;
+    s += `<rect x="${x}" y="${y(0) - h}" width="${w}" height="${h}" rx="${Math.min(3, w / 3)}" fill="${SC[wk ? d.worst : lvl(sccai(d))]}"/>`;
     const ds = Math.min(.25, Math.max(.12, bw / 40)), dw = 40 * ds;
     if (d.blood) s += `<path transform="translate(${x + w / 2 - dw / 2} ${y(0) - h - dw - 3}) scale(${ds})" d="${dropPath}" fill="var(--blood)"/>`;
     /* mucus blob sits above the drop (or on the bar when there's no blood) */
@@ -404,9 +425,9 @@ function barChart(keys, opts = {}) {
     /* a moon under the bar = woke at night */
     if (d.night > 0) { const ms = Math.min(.42, Math.max(.2, bw / 24)); s += `<path transform="translate(${x + w / 2 - 12 * ms} ${y(0) + 4}) scale(${ms})" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/>`; }
   });
-  const lab = [[keys[0], 0, "start"], [keys[Math.floor(n / 2)], Math.floor(n / 2), "middle"], [keys[n - 1], n - 1, "end"]];
-  lab.forEach(([k, i, a]) => s += `<text x="${L + i * bw + bw / 2}" y="${H - 6}" font-size="10" text-anchor="${a}" fill="var(--muted)">${k === todayIso() ? "Today" : parseIso(k).getDate() + " " + MONTHS[parseIso(k).getMonth()]}</text>`);
-  return S(`0 0 ${W} ${H}`, s, `class="chart" role="img" aria-label="Stools per day, coloured by colitis score"`);
+  const lab = [[groups[0][0], 0, "start"], [groups[Math.floor(n / 2)][0], Math.floor(n / 2), "middle"], [groups[n - 1][groups[n - 1].length - 1], n - 1, "end"]];
+  lab.forEach(([k, i, a]) => s += `<text x="${L + i * bw + bw / 2}" y="${H - 6}" font-size="12" text-anchor="${a}" fill="var(--muted)">${k === todayIso() ? "Today" : parseIso(k).getDate() + " " + MONTHS[parseIso(k).getMonth()]}</text>`);
+  return S(`0 0 ${W} ${H}`, s, `class="chart" role="img" aria-label="${wk ? "Average stools a day for each week, coloured by the week's worst day score" : "Stools per day, coloured by day score"}"`);
 }
 /* What comes before bad days: for each tag, compare the 2 days after tagged days with the 2 days after untagged days.
    Uses the day score (stools, night, blood, urgency...), leaves out flare days, and only judges a tag used 5+ times. */
@@ -442,6 +463,7 @@ function badDaysCard(keys) {
 }
 /* period: the same buttons, arrows and sliding as the History timeline; the window ends on trEnd (today unless you go back) */
 const TR_P = [["1 mo", 1], ["3 mo", 3], ["6 mo", 6], ["1 yr", 12]];
+let trInfo = false; /* legend and explanation, hidden until asked for */
 let tPeriod = 3, /* always opens on 3 months */ trEnd = null, trDrag = null, trSwallow = 0;
 function trRange() {
   const t = todayIso(); if (!trEnd || trEnd > t) trEnd = t;
@@ -460,8 +482,8 @@ function trMini(keys) {
   for (const f of live(data.flares).filter((x) => x.start && (x.end || t) >= first)) { const lo = (r) => (r.length === 4 ? r + "-01-01" : r.length === 7 ? r + "-01" : r), hi = (r) => (r.length === 4 ? r + "-12-31" : r.length === 7 ? r + "-28" : r);
     const a = lo(f.start) < first ? first : lo(f.start), b = f.end ? hi(f.end) : t; if (b < first) continue; s += `<rect x="${mx(a)}" y="2" width="${Math.max(1.5, mx(b) - mx(a))}" height="3" fill="var(--mod)"/>`; }
   const y0 = +first.slice(0, 4), y1 = +t.slice(0, 4);
-  for (let y = y0 + 1; y <= y1; y++) s += `<line x1="${mx(y + "-01-01")}" x2="${mx(y + "-01-01")}" y1="2" y2="28" stroke="var(--line)"/><text x="${mx(y + "-01-01")}" y="40" font-size="9" text-anchor="middle" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${y}</text>`;
-  if (y0 === y1) s += `<text x="4" y="40" font-size="9" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${y0}</text>`;
+  for (let y = y0 + 1; y <= y1; y++) s += `<line x1="${mx(y + "-01-01")}" x2="${mx(y + "-01-01")}" y1="2" y2="28" stroke="var(--line)"/><text x="${mx(y + "-01-01")}" y="41" font-size="11" text-anchor="middle" fill="var(--muted)">${y}</text>`;
+  if (y0 === y1) s += `<text x="4" y="41" font-size="11" fill="var(--muted)">${y0}</text>`;
   s += `<rect x="${mx(keys[0])}" y="1" width="${Math.max(6, mx(keys[keys.length - 1]) - mx(keys[0]))}" height="28" rx="4" fill="var(--accent)" fill-opacity=".14" stroke="var(--accent)" stroke-width="2"/>`;
   trMini.span = [first, total];
   return `<div class="tlmini" id="trMini" role="button" aria-label="Whole log: tap to jump there">${S(`0 0 ${mw} 44`, s, 'style="width:100%;height:auto;display:block"')}</div>`;
@@ -469,6 +491,7 @@ function trMini(keys) {
 const trShift = (months) => { const d = parseIso(trEnd || todayIso()); d.setMonth(d.getMonth() + months); trEnd = iso(d); };
 document.addEventListener("click", (e) => {
   if (tab !== "trends") return;
+  if (e.target.closest("[data-trinfo]")) { trInfo = !trInfo; renderTrends(); return; }
   const b = e.target.closest("[data-tperiod]"); if (b) { tPeriod = +b.dataset.tperiod; renderTrends(); return; }
   const s = e.target.closest("[data-trstep]"); if (s) { trShift(+s.dataset.trstep * tPeriod); renderTrends(); return; }
   const m = e.target.closest("#trMini"); if (m && trMini.span) { const r = m.getBoundingClientRect(), [first, total] = trMini.span, k = addDays(first, Math.round(((e.clientX - r.left) / r.width * 360 - 4) / 352 * total)); trEnd = addDays(k, Math.round(trRange().keys.length / 2)); renderTrends(); }
@@ -499,7 +522,7 @@ function renderTrends() {
   $("#main").innerHTML = `
   <div class="card"><div class="seg" id="tperiod">${TR_P.map(([l, m]) => `<button data-tperiod="${m}" aria-pressed="${m === tPeriod}">${l}</button>`).join("")}</div>
   <div class="row" id="trNav"><button class="navbtn" data-trstep="-1" aria-label="Earlier">‹</button><b class="tllbl">${tr.label}</b><button class="navbtn" data-trstep="1" aria-label="Later" ${atToday ? "disabled" : ""}>›</button></div>
-  <div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--mucus)">${mucus}</b> with mucus</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div><div id="trChart">${barChart(keys)}</div>${trMini(keys)}<div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 40 40" width="10" height="10" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${mucusPath}" fill="var(--mucus)"/></svg>Mucus</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">Bar height = stools that day. Drop on top = blood, blob on top = mucus, moon underneath = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
+  <div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--mucus)">${mucus}</b> with mucus</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged${weekly(keys) ? " · one bar per week" : ""}</div><div id="trChart">${barChart(keys)}</div>${trMini(keys)}<button class="infobtn" data-trinfo aria-expanded="${trInfo}">${S("0 0 24 24", '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/>', 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"')}${trInfo ? "Hide what the chart shows" : "What the chart shows"}</button>${trInfo ? `<div class="trinfo"><div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 40 40" width="10" height="10" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${mucusPath}" fill="var(--mucus)"/></svg>Mucus</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">${weekly(keys) ? "Each bar is one week: its height is the average stools a day, its colour the worst day that week. A drop, blob or moon means it happened at least once that week." : "Bar height = stools that day. Drop on top = blood, blob on top = mucus, moon underneath = woke at night."} Colour = how bad the day was, worked out from your log (not the flare grade). Slide the chart or use the arrows to move in time.</div></div>` : ""}</div>
   <div class="card">${foldHead("calBody", "Calendar", `${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)} · tap a day to open it`)}<div id="calBody" ${isOpen("calBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px"><div class="row"><div class="daynav"><button data-act="calPrev" aria-label="Previous month">‹</button><div class="name">${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)}</div><button data-act="calNext" aria-label="Next month" ${calMonth >= todayIso().slice(0, 7) ? "disabled" : ""}>›</button></div></div>${calendar(calMonth)}</div></div>
   ${badDaysCard(keys)}`;
 }
@@ -584,7 +607,7 @@ function medGantt(w = 360, ppy = 0, show = null, win = null) {
   if (show) { if (!show.meds) names.length = 0; if (!show.flares) flares.length = 0; for (let k = moms.length - 1; k >= 0; k--) if (!show[moms[k].type === "colonoscopy" ? "scope" : "hosp"]) moms.splice(k, 1); }
   const L = 8, R = 8;
   if (ppy) w = Math.max(w, Math.round((y1 - y0) * ppy) + L + R);
-  const months = ppy >= 150, top = flares.length || moms.length ? 24 : 0, foot = months || win ? 34 : 22;
+  const months = ppy >= 150, top = flares.length || moms.length ? 24 : 0, foot = months || win ? 38 : 22;
   const x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R), rowH = 29, H = top + names.length * rowH + 8 + foot;
   const gy = H - foot;
   let s = "";
@@ -596,14 +619,14 @@ function medGantt(w = 360, ppy = 0, show = null, win = null) {
     if (m.type === "colonoscopy") s += `<path d="M${cx} 5l6 7-6 7-6-7z" fill="var(--fg)" data-moment="${m.id}"/><rect x="${cx - 11}" y="1" width="22" height="22" fill="transparent" data-moment="${m.id}"/>`;
     else s += `<g transform="translate(${cx - 8} 3)" data-moment="${m.id}"><rect width="16" height="16" fill="transparent"/>${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="16" height="16" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
   }
-  const mono = 'font-family="ui-monospace,Menlo,monospace"';
+  const mono = "";
   if (win) {
     /* window ticks: the bottom row always names the year(s) shown, so a month never floats without its year */
     const span = y1 - y0, line = (t, o = 1) => `<line x1="${x(t)}" x2="${x(t)}" y1="4" y2="${gy}" stroke="var(--line)" opacity="${o}"/>`;
-    const lab = (t, txt, a = "start") => `<text x="${x(t) + (a === "start" ? 3 : 0)}" y="${gy + 12}" font-size="9.5" text-anchor="${a}" fill="var(--muted)" ${mono}>${txt}</text>`;
+    const lab = (t, txt, a = "start") => `<text x="${x(t) + (a === "start" ? 3 : 0)}" y="${gy + 14}" font-size="12" text-anchor="${a}" fill="var(--muted)" ${mono}>${txt}</text>`;
     if (span > 1.01) {
       for (let q = Math.ceil(y0 * 4); q < y1 * 4; q++) s += line(q / 4, q % 4 ? .35 : 1);
-      for (let yr = Math.ceil(y0); yr < y1; yr++) s += `<text x="${x(yr + .5)}" y="${gy + 12}" font-size="10" font-weight="600" text-anchor="middle" fill="var(--fg)" ${mono}>${span > 6 ? "'" + String(yr).slice(2) : yr}</text>`;
+      for (let yr = Math.ceil(y0); yr < y1; yr++) s += `<text x="${x(yr + .5)}" y="${gy + 14}" font-size="12" font-weight="600" text-anchor="middle" fill="var(--fg)" ${mono}>${span > 6 ? "'" + String(yr).slice(2) : yr}</text>`;
     } else if (span > 1 / 12 + .01) {
       for (let m = Math.ceil(y0 * 12 - .01); m < y1 * 12 - .01; m++) { s += line(m / 12, m % 12 ? .5 : 1); s += lab(m / 12 + 1 / 24, MONTHS[m % 12].slice(0, span > .6 ? 1 : 3), "middle"); }
     } else {
@@ -614,8 +637,8 @@ function medGantt(w = 360, ppy = 0, show = null, win = null) {
     if (span <= 1.01) for (let yr = Math.floor(y0); yr < y1; yr++) { const a = Math.max(yr, y0), b = Math.min(yr + 1, y1); if (b - a < .02) continue;
       if (yr > y0) s += `<line x1="${x(yr)}" x2="${x(yr)}" y1="${gy}" y2="${H - 2}" stroke="var(--fg)" opacity=".5"/>`;
       const narrow = x(b) - x(a) < 44;
-      s += `<text x="${x(a) + 3}" y="${gy + 28}" font-size="10.5" font-weight="700" fill="var(--fg)" ${mono}>${span <= 1 / 12 + .01 ? MONTHS[Math.round(y0 * 12) % 12] + " " : ""}${narrow ? "'" + String(yr).slice(2) : yr}</text>`; }
-    if (!names.length && show && show.meds) s += `<text x="${w / 2}" y="${gy / 2 + 4}" font-size="11.5" text-anchor="middle" fill="var(--muted)">No medicines in this period</text>`;
+      s += `<text x="${x(a) + 3}" y="${gy + 31}" font-size="12.5" font-weight="700" fill="var(--fg)" ${mono}>${span <= 1 / 12 + .01 ? MONTHS[Math.round(y0 * 12) % 12] + " " : ""}${narrow ? "'" + String(yr).slice(2) : yr}</text>`; }
+    if (!names.length && show && show.meds) s += `<text x="${w / 2}" y="${gy / 2 + 4}" font-size="13" text-anchor="middle" fill="var(--muted)">No medicines in this period</text>`;
   } else if (months) {
     for (let yr = y0; yr < y1; yr++) for (let mo = 0; mo < 12; mo++) {
       const xx = x(yr + mo / 12), mid = x(yr + (mo + .5) / 12);
@@ -635,7 +658,10 @@ function medGantt(w = 360, ppy = 0, show = null, win = null) {
     const label = `${esc(n)}${st ? ' <tspan fill="var(--muted)" font-weight="400">· steroid</tspan>' : ""}${why ? ` <tspan fill="var(--muted)" font-weight="400">· ${esc(why)}</tspan>` : ""}`;
     /* zoomed in, names are laid over the chart on the left so they stay put while it scrolls */
     if (ppy) medGantt.names.push({ y: yy - 3, label });
-    else s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)"${win ? ' paint-order="stroke" stroke="var(--surface)" stroke-width="3" stroke-linejoin="round"' : ""}>${label}</text>`;
+    else { const plain = n + (st ? " · steroid" : "") + (why ? " · " + why : ""), tw = plain.length * 6.6, vis = ms.map((m) => clip(roughYear(m.start, "start"), mEnd(m))).filter(([a, b]) => b > a);
+      /* the name sits just above where its bar starts, so a short bar on the right isn't far from its name */
+      const lx = win && vis.length ? Math.max(L, Math.min(x(Math.min(...vis.map((v) => v[0]))), w - R - tw)) : L;
+      s += `<text x="${lx}" y="${yy + 8}" font-size="12.5" font-weight="600" fill="var(--fg)"${win ? ' paint-order="stroke" stroke="var(--surface)" stroke-width="3" stroke-linejoin="round"' : ""}>${label}</text>`; }
     ms.forEach((m) => { const [a, b] = clip(roughYear(m.start, "start"), mEnd(m)); if (b <= a) return; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/><rect x="${x(a)}" y="${yy + 5}" width="${Math.max(16, x(b) - x(a))}" height="24" fill="transparent" data-med="${m.id}"/>`; });
   });
   medGantt.sc = { x, y0, y1 };
@@ -786,7 +812,7 @@ function lifeStrip(w = 360) {
     if (m.type === "hospital" || m.type === "surgery") s += `<g transform="translate(${x(roughYear(m.when)) - 9} 4)">${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="18" height="18" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
   }
   const step = y1 - y0 > 12 ? 2 : 1;
-  for (let yr = y0; yr <= y1; yr += step) s += `<text x="${x(yr)}" y="114" font-size="9.5" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${yr}</text>`;
+  for (let yr = y0; yr <= y1; yr += step) s += `<text x="${x(yr)}" y="114" font-size="11" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)">${yr}</text>`;
   return S(`0 0 ${w} 120`, s, `style="width:100%;min-width:340px;height:auto"`);
 }
 function profileRows() {
@@ -915,7 +941,7 @@ function flareView(f) {
     <button class="btn" data-act="flareEdit" data-id="${f.id}">Edit</button>`);
 }
 /* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
-const LAYERS = [["meds", "Medicines", `<i style="background:var(--med1);height:6px;border-radius:3px;width:14px"></i>`], ["flares", "Flares", `<i style="background:var(--mod);opacity:.45"></i>`], ["scope", "Colonoscopy", "◆"], ["hosp", "Hospital / surgery", `<b style="color:var(--sev)">✚</b>`]];
+const LAYERS = [["meds", "Meds", "Medicines", `<i style="background:var(--med1);height:6px;border-radius:3px;width:14px"></i>`], ["flares", "Flares", "Flares", `<i style="background:var(--mod);opacity:.45"></i>`], ["scope", "Scopes", "Colonoscopies", "◆"], ["hosp", "Hospital", "Hospital stays and surgery", `<b style="color:var(--sev)">✚</b>`]];
 const SHOW_ALL = () => ({ meds: true, flares: true, scope: true, hosp: true });
 let chartShow = SHOW_ALL();
 function timelineCard() {
@@ -923,7 +949,7 @@ function timelineCard() {
     <div id="tlBody" style="display:flex;flex-direction:column;gap:10px">
     <div class="seg" id="zoomSeg" style="grid-template-columns:repeat(6,1fr)">${TL_ZOOMS.map(([l], i) => `<button data-tlz="${i}" aria-pressed="${i === tlZ}">${l}</button>`).join("")}</div>
     <div class="row" id="tlNav"><button class="navbtn" data-tlstep="-1" aria-label="Earlier">‹</button><b id="tlLbl" class="tllbl"></b><button class="navbtn" data-tlstep="1" aria-label="Later">›</button></div>
-    <div class="chips layers" role="group" aria-label="Show on the chart">${LAYERS.map(([k, l, sw]) => `<button type="button" data-layer="${k}" aria-pressed="${chartShow[k]}">${sw} ${l}</button>`).join("")}</div>
+    <div class="layers4" role="group" aria-label="Show on the chart">${LAYERS.map(([k, l, full, sw]) => `<button type="button" data-layer="${k}" aria-pressed="${chartShow[k]}" aria-label="${full}">${sw}${l}</button>`).join("")}</div>
     <div id="chartWrap"></div>
     <div class="sub">Slide the chart or the strip with your finger, or use the arrows. Tap a bar or mark to open it.</div></div></div>`;
 }
@@ -960,7 +986,7 @@ function drawChart() {
   const nm = [...new Set(live(data.meds).filter((x) => x.start).sort((a, b) => (roughSort(a.start) < roughSort(b.start) ? -1 : 1)).map((x) => x.name))];
   if (chartShow.meds) nm.forEach((n, i) => { for (const md of live(data.meds).filter((q) => q.name === n && q.start)) { const a = roughYear(md.start, "start"), b = md.stopDay ? roughYear(md.stopDay, "end") : md.stop ? roughYear(md.stop, "end") : roughYear(todayIso()); m += `<rect x="${mx(a)}" y="${4 + (i % 6) * 4}" width="${Math.max(1.5, mx(b) - mx(a))}" height="3" fill="${medColor(md)}"/>`; } });
   const step = f1 - f0 > 12 ? 2 : 1;
-  for (let y = Math.ceil(f0); y < f1; y += step) m += `<text x="${mx(y)}" y="40" font-size="9" text-anchor="middle" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">'${String(y).slice(2)}</text>`;
+  for (let y = Math.ceil(f0); y < f1; y += step) m += `<text x="${mx(y)}" y="41" font-size="11" text-anchor="middle" fill="var(--muted)">'${String(y).slice(2)}</text>`;
   if (win) m += `<rect x="${mx(win[0])}" y="1" width="${Math.max(6, mx(win[1]) - mx(win[0]))}" height="28" rx="4" fill="var(--accent)" fill-opacity=".14" stroke="var(--accent)" stroke-width="2"/>`;
   w.innerHTML = `<div id="ganttBox">${chart.replace("min-width:340px;", "")}</div><div class="tlmini" id="tlMini" role="button" aria-label="Whole history: tap to jump there">${S(`0 0 ${mw} 44`, m, 'style="width:100%;height:auto;display:block"')}</div>`;
 }
@@ -1365,7 +1391,12 @@ function setSync(s, msg = "") {
   if (s === "ok") { syncStatus.at = Date.now(); LS.set("gl.syncedAt", syncStatus.at); }
   const b = $("#syncBtn"); if (!b) return;
   b.className = "hdrbtn " + ({ off: "off", err: "err", offline: "err" }[s] || "");
-  $("#syncTxt").textContent = { off: "On phone only", busy: "Syncing…", ok: dirty ? "Saved on phone" : "Locked & synced", err: "Sync problem", offline: "Offline" }[s];
+  const k = s === "ok" && dirty ? "wait" : s, txt = { off: "On phone only", busy: "Syncing…", ok: "Locked & synced", wait: "Saved on phone, syncing soon", err: "Sync problem", offline: "Offline" }[k];
+  b.setAttribute("aria-label", txt + ". Tap for sync settings"); b.title = txt;
+  /* a small icon instead of words: phone = not synced, cloud + tick = synced, cloud + dot = waiting, cloud + ! = problem */
+  const cloud = '<path d="M7 18h10.5a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.4 9.1 4.5 4.5 0 0 0 7 18z"/>';
+  $("#syncTxt").innerHTML = k === "busy" ? '<span class="spin"></span>' : S("0 0 24 24", k === "off" ? '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>'
+    : cloud + ({ ok: '<path d="M9.5 13.2l2 2 3.5-3.7"/>', wait: '<circle cx="12" cy="13.5" r="1.4" fill="currentColor"/>', err: '<path d="M12 10.5v3M12 16v.01"/>', offline: '<path d="M12 10.5v3M12 16v.01"/>' }[k] || ""), 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"');
   const i = $("#syncInfo"); if (i) i.textContent = syncText();
 }
 function scheduleSync(ms = 15000) { clearTimeout(syncTimer); if (connected()) { syncTimer = setTimeout(sync, ms); setSync(syncStatus.s === "busy" ? "busy" : syncStatus.s === "off" ? "ok" : syncStatus.s); } }
@@ -1415,7 +1446,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 58</div>
+  <div class="sub">App version 59</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });

@@ -45,8 +45,11 @@ function save(msg) {
   LS.set("gl.data", data);
   dirty = true; LS.set("gl.dirty", true);
   if (msg) toast(msg);
+  flashTick();
   if (typeof scheduleSync === "function") scheduleSync();
 }
+/* a brief "Saved" tick in the header after every change */
+function flashTick() { const t = document.getElementById("tick"); if (!t) return; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 1300); }
 const live = (arr) => arr.filter((x) => !x.del);
 const stamp = (o) => { o.at = Date.now(); return o; };
 

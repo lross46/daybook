@@ -26,7 +26,12 @@ const fmtDay = (s) => { const d = parseIso(s); return `${DOW[d.getDay()]} ${d.ge
 const fmtDate = (s) => { if (!s) return ""; const d = parseIso(s); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
 /* rough dates: "2019", "2019-04" or "2019-04-12" */
 const fmtRough = (s) => { if (!s) return "date not set"; const p = s.split("-"); if (p.length === 1) return p[0]; if (p.length === 2) return `${MONTHS[+p[1] - 1]} ${p[0]}`; return fmtDate(s); };
-const roughYear = (s) => { if (!s) return null; const p = s.split("-").map(Number); return p[0] + ((p[1] || 7) - 1) / 12 + ((p[2] || 15) - 1) / 365; };
+/* a rough date ("2019", "2019-06" or "2019-06-14") as a decimal year. edge "start" = first day of that month/year,
+   "end" = last day of it (so June to July covers both months), none = the middle (for single events) */
+const roughYear = (s, edge) => { if (!s) return null; const p = s.split("-").map(Number);
+  if (edge === "end" && !p[2]) return p[1] ? p[0] + p[1] / 12 : p[0] + 1;
+  if (edge === "start") return p[0] + ((p[1] || 1) - 1) / 12 + ((p[2] || 1) - 1) / 365;
+  return p[0] + ((p[1] || 7) - 1) / 12 + ((p[2] || 15) - 1) / 365; };
 const roughSort = (s) => (s || "0000").padEnd(10, "-99");
 const roughLo = (s) => (s || "0000").padEnd(10, "-00");
 

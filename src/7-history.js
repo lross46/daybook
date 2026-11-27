@@ -62,7 +62,7 @@ function lifeStrip(w = 360) {
   const y0 = Math.floor(Math.min(...years)), y1 = Math.ceil(nowY + .01), L = 8, R = 8, x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R);
   let s = `<rect x="${x(data.profile.diagYear ? +data.profile.diagYear : y0)}" y="44" width="${x(nowY) - x(data.profile.diagYear ? +data.profile.diagYear : y0)}" height="16" rx="3" fill="var(--ok)" opacity=".55"/>`;
   for (const f of live(data.flares)) {
-    const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY;
+    const a = roughYear(f.start, "start"), b = f.end ? roughYear(f.end, "end") : nowY;
     s += `<rect x="${x(a)}" y="34" width="${Math.max(4, x(b) - x(a))}" height="36" rx="3" fill="var(--mod)"/>`;
   }
   for (const m of live(data.moments)) {
@@ -172,7 +172,7 @@ function flareForm(f) {
 
 /* ---------- tap an item: see it first, edit only from the Edit button ---------- */
 const kvRows = (rows) => `<div class="kv mini view">${rows.filter(([, v]) => v).map(([k, v]) => `<div><span class="sub">${k}</span><span>${esc(v)}</span></div>`).join("")}</div>`;
-const yrsBetween = (a, b) => { const d = roughYear(b) - roughYear(a); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.round(d * 12)} months` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
+const yrsBetween = (a, b) => { const d = roughYear(b, "end") - roughYear(a, "start"); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.round(d * 12)} months` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
 function medView(m) {
   const c = curDose(m), st = isSteroid(m.name);
   const changes = (m.changes || []).map((x) => `${fmtRough(x.from)}: ${[x.dose, x.freq].filter(Boolean).join(" · ")}`);

@@ -26,7 +26,12 @@ const fmtDay = (s) => { const d = parseIso(s); return `${DOW[d.getDay()]} ${d.ge
 const fmtDate = (s) => { if (!s) return ""; const d = parseIso(s); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
 /* rough dates: "2019", "2019-04" or "2019-04-12" */
 const fmtRough = (s) => { if (!s) return "date not set"; const p = s.split("-"); if (p.length === 1) return p[0]; if (p.length === 2) return `${MONTHS[+p[1] - 1]} ${p[0]}`; return fmtDate(s); };
-const roughYear = (s) => { if (!s) return null; const p = s.split("-").map(Number); return p[0] + ((p[1] || 7) - 1) / 12 + ((p[2] || 15) - 1) / 365; };
+/* a rough date ("2019", "2019-06" or "2019-06-14") as a decimal year. edge "start" = first day of that month/year,
+   "end" = last day of it (so June to July covers both months), none = the middle (for single events) */
+const roughYear = (s, edge) => { if (!s) return null; const p = s.split("-").map(Number);
+  if (edge === "end" && !p[2]) return p[1] ? p[0] + p[1] / 12 : p[0] + 1;
+  if (edge === "start") return p[0] + ((p[1] || 1) - 1) / 12 + ((p[2] || 1) - 1) / 365;
+  return p[0] + ((p[1] || 7) - 1) / 12 + ((p[2] || 15) - 1) / 365; };
 const roughSort = (s) => (s || "0000").padEnd(10, "-99");
 const roughLo = (s) => (s || "0000").padEnd(10, "-00");
 
@@ -456,7 +461,7 @@ function medGantt(w = 360, ppy = 0, show = null) {
   const gy = H - foot;
   let s = "";
   /* flares as orange bands behind every medicine, colonoscopies and hospital stays as marks on top */
-  for (const f of flares) { const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${gy - 2}" fill="var(--mod)" opacity=".2" data-flare="${f.id}"/>`; }
+  for (const f of flares) { const a = roughYear(f.start, "start"), b = f.end ? roughYear(f.end, "end") : nowY; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${gy - 2}" fill="var(--mod)" opacity=".2" data-flare="${f.id}"/>`; }
   for (const m of moms) {
     const cx = x(roughYear(m.when));
     if (m.type === "colonoscopy") s += `<path d="M${cx} 5l6 7-6 7-6-7z" fill="var(--fg)" data-moment="${m.id}"/><rect x="${cx - 11}" y="1" width="22" height="22" fill="transparent" data-moment="${m.id}"/>`;
@@ -483,7 +488,7 @@ function medGantt(w = 360, ppy = 0, show = null) {
     /* zoomed in, names are laid over the chart on the left so they stay put while it scrolls */
     if (ppy) medGantt.names.push({ y: yy - 3, label });
     else s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)">${label}</text>`;
-    ms.forEach((m) => { const a = roughYear(m.start), b = m.stopDay ? roughYear(m.stopDay) : m.stop ? roughYear(m.stop) : nowY; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/><rect x="${x(a)}" y="${yy + 5}" width="${Math.max(16, x(b) - x(a))}" height="24" fill="transparent" data-med="${m.id}"/>`; });
+    ms.forEach((m) => { const a = roughYear(m.start, "start"), b = m.stopDay ? roughYear(m.stopDay, "end") : m.stop ? roughYear(m.stop, "end") : nowY; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/><rect x="${x(a)}" y="${yy + 5}" width="${Math.max(16, x(b) - x(a))}" height="24" fill="transparent" data-med="${m.id}"/>`; });
   });
   medGantt.sc = { x, y0, y1 };
   return S(`0 0 ${w} ${H}`, s, ppy ? `width="${w}" height="${H}" style="display:block;max-width:none"` : `style="width:100%;min-width:340px;height:auto"`);
@@ -621,7 +626,7 @@ function lifeStrip(w = 360) {
   const y0 = Math.floor(Math.min(...years)), y1 = Math.ceil(nowY + .01), L = 8, R = 8, x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R);
   let s = `<rect x="${x(data.profile.diagYear ? +data.profile.diagYear : y0)}" y="44" width="${x(nowY) - x(data.profile.diagYear ? +data.profile.diagYear : y0)}" height="16" rx="3" fill="var(--ok)" opacity=".55"/>`;
   for (const f of live(data.flares)) {
-    const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY;
+    const a = roughYear(f.start, "start"), b = f.end ? roughYear(f.end, "end") : nowY;
     s += `<rect x="${x(a)}" y="34" width="${Math.max(4, x(b) - x(a))}" height="36" rx="3" fill="var(--mod)"/>`;
   }
   for (const m of live(data.moments)) {
@@ -731,7 +736,7 @@ function flareForm(f) {
 
 /* ---------- tap an item: see it first, edit only from the Edit button ---------- */
 const kvRows = (rows) => `<div class="kv mini view">${rows.filter(([, v]) => v).map(([k, v]) => `<div><span class="sub">${k}</span><span>${esc(v)}</span></div>`).join("")}</div>`;
-const yrsBetween = (a, b) => { const d = roughYear(b) - roughYear(a); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.round(d * 12)} months` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
+const yrsBetween = (a, b) => { const d = roughYear(b, "end") - roughYear(a, "start"); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.round(d * 12)} months` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
 function medView(m) {
   const c = curDose(m), st = isSteroid(m.name);
   const changes = (m.changes || []).map((x) => `${fmtRough(x.from)}: ${[x.dose, x.freq].filter(Boolean).join(" · ")}`);

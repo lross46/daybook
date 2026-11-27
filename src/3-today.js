@@ -1,8 +1,8 @@
 
 /* ---------- navigation ---------- */
-const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["timeline", "Timeline", I.gantt], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
+const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
 const TITLES = { today: "Today", trends: "Trends", meds: "Medicines", timeline: "Timeline", history: "My history", doctor: "My IBD team" };
-let tab = LS.get("gl.tab", "today");
+let tab = LS.get("gl.tab", "today"); if (tab === "timeline") tab = "history";
 let viewDay = todayIso();
 function renderNav() {
   $("#nav").innerHTML = TABS.map(([k, l, p]) => `<button data-tab="${k}" ${k === tab ? 'aria-current="page"' : ""}>${S("0 0 24 24", p, stroke)}${l}</button>`).join("");
@@ -12,7 +12,7 @@ function render() {
   renderNav();
   $("#ttl").textContent = TITLES[tab];
   $("#hsub").textContent = fmtDay(todayIso()).replace(/^(\w+) /, (m, d) => ({ Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" }[d] + " "));
-  ({ today: renderToday, trends: renderTrends, meds: renderMeds, timeline: renderTimeline, history: renderHistory, doctor: renderDoctor })[tab]();
+  ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
 }
 function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); }
 

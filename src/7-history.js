@@ -46,6 +46,7 @@ function applyFind(scope) {
   }
   for (const grp of scope.querySelectorAll("[data-fgroup]")) grp.hidden = !grp.querySelector("[data-fi]:not([hidden])");
   for (const e of scope.querySelectorAll("[data-fempty]")) e.hidden = any;
+  if (scope.querySelector("#evList") && (q || g !== "all")) listToggle(null, true);
   if (q && first && first.dataset.y && scope.querySelector("#ganttBox")) jumpTo(+first.dataset.y, true);
 }
 document.addEventListener("input", (e) => { if (e.target.matches("[data-find]")) applyFind(e.target.closest("[data-fscope]")); });
@@ -84,14 +85,28 @@ function profileRows() {
   ];
 }
 function renderHistory() {
-  const items = timelineItems();
+  const items = timelineItems(), p = data.profile, st = steroidCourses().all.length;
+  const sum = [p.diagYear && `Diagnosed ${p.diagYear}`, p.extentNow && p.extentNow.toLowerCase(), st && `${st} steroid course${st > 1 ? "s" : ""}`].filter(Boolean).join(" · ") || "Tap to add your diagnosis and extent";
   $("#main").innerHTML = `<div data-fscope style="display:contents">
-  <div class="card"><div class="row"><div class="label">About my colitis</div><button class="btn small" data-act="profileEdit">Edit</button></div>
+  <button class="btn primary" data-act="momentAdd">+ Add an event</button>
+  <button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button>
+  ${items.length ? `${timelineCard()}
+  <div class="card">${findBox("Search medicines, flares, tests")}${findChips()}
+    <button class="listtog" data-act="listToggle" aria-expanded="false">Show all events (${items.length}) <span aria-hidden="true">▾</span></button>
+    <div id="evList" hidden>${eventList(items)}</div></div>` : `<div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
+  if (items.length) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
+}
+function aboutOpen() {
+  openSheet(`${sheetHead("About my colitis")}
     <div class="kv">${profileRows().map(([k, t, v, a]) => `<div><span class="ki">${S("0 0 24 24", I[k], stroke)}</span><div style="min-width:0"><div class="sub">${t}${a ? '<span class="auto">auto</span>' : ""}</div><div style="font-weight:500">${esc(v)}</div></div></div>`).join("")}</div>
-    <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and the moments below.</div></div>
-  <div class="card"><div class="row"><div class="label">Key moments</div><button class="btn small" data-act="momentAdd">+ Add</button></div>
-    ${items.length ? `${findBox("Search history")}${findChips()}${eventList(items)}` : `<div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine.</div>`}
-    <div class="sub">Medicine starts, changes and stops appear here automatically from Meds. Flares you mark on Today too.</div></div></div>`;
+    <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and your events.</div>
+    <button class="btn primary" data-act="profileEdit">Edit</button>`);
+}
+function listToggle(el, open) {
+  const l = $("#evList"); if (!l) return;
+  l.hidden = open === undefined ? !l.hidden : !open;
+  const b = el || $('[data-act="listToggle"]'); b.setAttribute("aria-expanded", !l.hidden);
+  b.firstChild.textContent = l.hidden ? `Show all events (${$$("#evList [data-fi]").length}) ` : "Hide the list ";
 }
 function profileEdit() {
   const p = data.profile;

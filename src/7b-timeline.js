@@ -1,14 +1,9 @@
 /* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
-function renderTimeline() {
-  if (!medGantt(360, 0)) { $("#main").innerHTML = `<div class="card"><div class="label">Nothing to show yet</div><p class="sub" style="margin:0;font-size:14px">Add medicines in Meds and flares, colonoscopies or hospital stays in History, and they appear here on one timeline.</p></div>`; return; }
-  $("#main").innerHTML = `<div data-fscope style="display:contents">
-  <div class="card">${findBox("Search medicines, flares, tests")}${findChips()}</div>
-  <div class="card"><div class="seg" id="zoomSeg" style="grid-template-columns:repeat(3,1fr)">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div>
+function timelineCard() {
+  return `<div class="card"><div class="seg" id="zoomSeg" style="grid-template-columns:repeat(3,1fr)">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div>
     <div id="chartWrap"></div>
     <div class="legend"><span><i style="background:var(--mod);opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span><b style="color:var(--sev)">✚</b> Hospital / surgery</span></div>
-    <div class="sub">Tap a bar or mark to open it.</div></div>
-  <div class="card"><div class="row"><div class="label">Everything, newest first</div><span class="sub">tap one to open it</span></div>${eventList(timelineItems())}</div></div>`;
-  drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth;
+    <div class="sub">Tap a bar or mark to open it.</div></div>`;
 }
 function drawChart() {
   const w = $("#chartWrap"); if (!w) return;

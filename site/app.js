@@ -179,9 +179,9 @@ I.search='<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>';
 I.gantt='<path d="M4 6h9M8 12h12M4 18h7"/>';
 
 /* ---------- navigation ---------- */
-const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["timeline", "Timeline", I.gantt], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
+const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
 const TITLES = { today: "Today", trends: "Trends", meds: "Medicines", timeline: "Timeline", history: "My history", doctor: "My IBD team" };
-let tab = LS.get("gl.tab", "today");
+let tab = LS.get("gl.tab", "today"); if (tab === "timeline") tab = "history";
 let viewDay = todayIso();
 function renderNav() {
   $("#nav").innerHTML = TABS.map(([k, l, p]) => `<button data-tab="${k}" ${k === tab ? 'aria-current="page"' : ""}>${S("0 0 24 24", p, stroke)}${l}</button>`).join("");
@@ -191,7 +191,7 @@ function render() {
   renderNav();
   $("#ttl").textContent = TITLES[tab];
   $("#hsub").textContent = fmtDay(todayIso()).replace(/^(\w+) /, (m, d) => ({ Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" }[d] + " "));
-  ({ today: renderToday, trends: renderTrends, meds: renderMeds, timeline: renderTimeline, history: renderHistory, doctor: renderDoctor })[tab]();
+  ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
 }
 function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); }
 
@@ -565,6 +565,7 @@ function applyFind(scope) {
   }
   for (const grp of scope.querySelectorAll("[data-fgroup]")) grp.hidden = !grp.querySelector("[data-fi]:not([hidden])");
   for (const e of scope.querySelectorAll("[data-fempty]")) e.hidden = any;
+  if (scope.querySelector("#evList") && (q || g !== "all")) listToggle(null, true);
   if (q && first && first.dataset.y && scope.querySelector("#ganttBox")) jumpTo(+first.dataset.y, true);
 }
 document.addEventListener("input", (e) => { if (e.target.matches("[data-find]")) applyFind(e.target.closest("[data-fscope]")); });
@@ -603,14 +604,28 @@ function profileRows() {
   ];
 }
 function renderHistory() {
-  const items = timelineItems();
+  const items = timelineItems(), p = data.profile, st = steroidCourses().all.length;
+  const sum = [p.diagYear && `Diagnosed ${p.diagYear}`, p.extentNow && p.extentNow.toLowerCase(), st && `${st} steroid course${st > 1 ? "s" : ""}`].filter(Boolean).join(" · ") || "Tap to add your diagnosis and extent";
   $("#main").innerHTML = `<div data-fscope style="display:contents">
-  <div class="card"><div class="row"><div class="label">About my colitis</div><button class="btn small" data-act="profileEdit">Edit</button></div>
+  <button class="btn primary" data-act="momentAdd">+ Add an event</button>
+  <button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button>
+  ${items.length ? `${timelineCard()}
+  <div class="card">${findBox("Search medicines, flares, tests")}${findChips()}
+    <button class="listtog" data-act="listToggle" aria-expanded="false">Show all events (${items.length}) <span aria-hidden="true">▾</span></button>
+    <div id="evList" hidden>${eventList(items)}</div></div>` : `<div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
+  if (items.length) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
+}
+function aboutOpen() {
+  openSheet(`${sheetHead("About my colitis")}
     <div class="kv">${profileRows().map(([k, t, v, a]) => `<div><span class="ki">${S("0 0 24 24", I[k], stroke)}</span><div style="min-width:0"><div class="sub">${t}${a ? '<span class="auto">auto</span>' : ""}</div><div style="font-weight:500">${esc(v)}</div></div></div>`).join("")}</div>
-    <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and the moments below.</div></div>
-  <div class="card"><div class="row"><div class="label">Key moments</div><button class="btn small" data-act="momentAdd">+ Add</button></div>
-    ${items.length ? `${findBox("Search history")}${findChips()}${eventList(items)}` : `<div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine.</div>`}
-    <div class="sub">Medicine starts, changes and stops appear here automatically from Meds. Flares you mark on Today too.</div></div></div>`;
+    <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and your events.</div>
+    <button class="btn primary" data-act="profileEdit">Edit</button>`);
+}
+function listToggle(el, open) {
+  const l = $("#evList"); if (!l) return;
+  l.hidden = open === undefined ? !l.hidden : !open;
+  const b = el || $('[data-act="listToggle"]'); b.setAttribute("aria-expanded", !l.hidden);
+  b.firstChild.textContent = l.hidden ? `Show all events (${$$("#evList [data-fi]").length}) ` : "Hide the list ";
 }
 function profileEdit() {
   const p = data.profile;
@@ -670,16 +685,11 @@ function flareForm(f) {
   const b = $('#sheet [data-act="momentDelete"]'); if (b) { b.dataset.act = "flareDelete"; b.textContent = "Delete this flare"; }
 }
 /* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
-function renderTimeline() {
-  if (!medGantt(360, 0)) { $("#main").innerHTML = `<div class="card"><div class="label">Nothing to show yet</div><p class="sub" style="margin:0;font-size:14px">Add medicines in Meds and flares, colonoscopies or hospital stays in History, and they appear here on one timeline.</p></div>`; return; }
-  $("#main").innerHTML = `<div data-fscope style="display:contents">
-  <div class="card">${findBox("Search medicines, flares, tests")}${findChips()}</div>
-  <div class="card"><div class="seg" id="zoomSeg" style="grid-template-columns:repeat(3,1fr)">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div>
+function timelineCard() {
+  return `<div class="card"><div class="seg" id="zoomSeg" style="grid-template-columns:repeat(3,1fr)">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div>
     <div id="chartWrap"></div>
     <div class="legend"><span><i style="background:var(--mod);opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span><b style="color:var(--sev)">✚</b> Hospital / surgery</span></div>
-    <div class="sub">Tap a bar or mark to open it.</div></div>
-  <div class="card"><div class="row"><div class="label">Everything, newest first</div><span class="sub">tap one to open it</span></div>${eventList(timelineItems())}</div></div>`;
-  drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth;
+    <div class="sub">Tap a bar or mark to open it.</div></div>`;
 }
 function drawChart() {
   const w = $("#chartWrap"); if (!w) return;
@@ -1184,6 +1194,8 @@ const ACTS = {
   medFix: (el) => medForm(byId(data.meds, el.dataset.id)),
   /* History */
   profileEdit: () => profileEdit(),
+  aboutOpen: () => aboutOpen(),
+  listToggle: (el) => listToggle(el),
   profileSave: () => profileSave(),
   momentAdd: () => momentForm(null),
   momentSave: (el) => momentSave(el.dataset.id, el.dataset.type),

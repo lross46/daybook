@@ -43,6 +43,8 @@ const ACTS = {
   medFix: (el) => medForm(byId(data.meds, el.dataset.id)),
   /* History */
   profileEdit: () => profileEdit(),
+  aboutOpen: () => aboutOpen(),
+  listToggle: (el) => listToggle(el),
   profileSave: () => profileSave(),
   momentAdd: () => momentForm(null),
   momentSave: (el) => momentSave(el.dataset.id, el.dataset.type),

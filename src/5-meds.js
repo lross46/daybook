@@ -5,8 +5,14 @@ function roughInput(id, val, opts = {}) {
   const now = new Date().getFullYear(), years = [];
   for (let i = now; i >= 1960; i--) years.push(i);
   const days = []; for (let i = 1; i <= 31; i++) days.push(pad(i));
-  return `<div class="two" data-rough="${id}" style="grid-template-columns:.8fr 1.5fr 1fr"><select aria-label="Day"><option value="">Day</option>${days.map((v) => `<option value="${v}" ${d === v ? "selected" : ""}>${+v}</option>`).join("")}</select><select aria-label="Month"><option value="">Month</option>${MONTHS_L.map((n, i) => `<option value="${pad(i + 1)}" ${m === pad(i + 1) ? "selected" : ""}>${n}</option>`).join("")}</select><select aria-label="Year"><option value="">${opts.blank || "Year"}</option>${years.map((v) => `<option ${String(v) === y ? "selected" : ""}>${v}</option>`).join("")}</select></div>`;
+  return `<div class="two" data-rough="${id}" style="grid-template-columns:.8fr 1.5fr 1fr 44px"><select aria-label="Day"><option value="">Day</option>${days.map((v) => `<option value="${v}" ${d === v ? "selected" : ""}>${+v}</option>`).join("")}</select><select aria-label="Month"><option value="">Month</option>${MONTHS_L.map((n, i) => `<option value="${pad(i + 1)}" ${m === pad(i + 1) ? "selected" : ""}>${n}</option>`).join("")}</select><select aria-label="Year"><option value="">${opts.blank || "Year"}</option>${years.map((v) => `<option ${String(v) === y ? "selected" : ""}>${v}</option>`).join("")}</select><label class="calbtn" aria-label="Pick from calendar">${ico("cal")}<input type="date" data-calfor="${id}" max="${todayIso()}" value="${y && m && d ? `${y}-${m}-${d}` : ""}"></label></div>`;
 }
+/* the calendar button fills day, month and year */
+document.addEventListener("change", (e) => {
+  const id = e.target.dataset?.calfor; if (!id || !e.target.value) return;
+  const [y, m, d] = e.target.value.split("-"), sel = $$(`[data-rough="${id}"] select`);
+  sel[0].value = d; sel[1].value = m; if (![...sel[2].options].some((o) => o.value === y)) sel[2].add(new Option(y, y), 1); sel[2].value = y;
+});
 /* "YYYY", "YYYY-MM" or "YYYY-MM-DD"; a day only counts with a month, and is kept inside that month */
 function readRough(id) {
   const el = $(`[data-rough="${id}"]`); if (!el) return "";

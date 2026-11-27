@@ -47,31 +47,59 @@ function steroidCourses() {
   return { all: list, recent };
 }
 /* ppy = pixels per year: 0 fits everything in w; bigger values make a wider chart that scrolls sideways */
-function medGantt(w = 360, ppy = 0, show = null) {
+/* win = [from, to] in decimal years: draw only that window (History timeline zoom); none = whole history */
+function medGantt(w = 360, ppy = 0, show = null, win = null) {
   const meds = live(data.meds).filter((m) => m.start);
-  medGantt.names = [];
+  medGantt.names = []; medGantt.full = null;
   const anyMoment = live(data.flares).some((f) => f.start) || live(data.moments).some((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
   if (!meds.length && !anyMoment) return "";
   const names = [...new Set(meds.sort((a, b) => roughSort(a.start) < roughSort(b.start) ? -1 : 1).map((m) => m.name))];
   const flares = live(data.flares).filter((f) => f.start), moms = live(data.moments).filter((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
-  const nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
+  let nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
+  medGantt.full = [y0, y1];
+  const mEnd = (m) => (m.stopDay ? roughYear(m.stopDay, "end") : m.stop ? roughYear(m.stop, "end") : nowY);
+  if (win) {
+    [y0, y1] = win;
+    for (let k = names.length - 1; k >= 0; k--) if (!meds.some((m) => m.name === names[k] && roughYear(m.start, "start") < y1 && mEnd(m) > y0)) names.splice(k, 1);
+  }
+  const clip = (a, b) => [Math.max(a, y0), Math.min(b, y1)];
   /* layers switched off on the History chart */
   if (show) { if (!show.meds) names.length = 0; if (!show.flares) flares.length = 0; for (let k = moms.length - 1; k >= 0; k--) if (!show[moms[k].type === "colonoscopy" ? "scope" : "hosp"]) moms.splice(k, 1); }
   const L = 8, R = 8;
   if (ppy) w = Math.max(w, Math.round((y1 - y0) * ppy) + L + R);
-  const months = ppy >= 150, top = flares.length || moms.length ? 24 : 0, foot = months ? 34 : 22;
+  const months = ppy >= 150, top = flares.length || moms.length ? 24 : 0, foot = months || win ? 34 : 22;
   const x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R), rowH = 29, H = top + names.length * rowH + 8 + foot;
   const gy = H - foot;
   let s = "";
   /* flares as orange bands behind every medicine, colonoscopies and hospital stays as marks on top */
-  for (const f of flares) { const a = roughYear(f.start, "start"), b = f.end ? roughYear(f.end, "end") : nowY; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${gy - 2}" fill="var(--mod)" opacity=".2" data-flare="${f.id}"/>`; }
+  for (const f of flares) { const [a, b] = clip(roughYear(f.start, "start"), f.end ? roughYear(f.end, "end") : nowY); if (b <= a) continue; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${gy - 2}" fill="var(--mod)" opacity=".2" data-flare="${f.id}"/>`; }
   for (const m of moms) {
-    const cx = x(roughYear(m.when));
+    const t = roughYear(m.when); if (t < y0 || t > y1) continue;
+    const cx = x(t);
     if (m.type === "colonoscopy") s += `<path d="M${cx} 5l6 7-6 7-6-7z" fill="var(--fg)" data-moment="${m.id}"/><rect x="${cx - 11}" y="1" width="22" height="22" fill="transparent" data-moment="${m.id}"/>`;
     else s += `<g transform="translate(${cx - 8} 3)" data-moment="${m.id}"><rect width="16" height="16" fill="transparent"/>${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="16" height="16" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
   }
   const mono = 'font-family="ui-monospace,Menlo,monospace"';
-  if (months) {
+  if (win) {
+    /* window ticks: the bottom row always names the year(s) shown, so a month never floats without its year */
+    const span = y1 - y0, line = (t, o = 1) => `<line x1="${x(t)}" x2="${x(t)}" y1="4" y2="${gy}" stroke="var(--line)" opacity="${o}"/>`;
+    const lab = (t, txt, a = "start") => `<text x="${x(t) + (a === "start" ? 3 : 0)}" y="${gy + 12}" font-size="9.5" text-anchor="${a}" fill="var(--muted)" ${mono}>${txt}</text>`;
+    if (span > 1.01) {
+      for (let q = Math.ceil(y0 * 4); q < y1 * 4; q++) s += line(q / 4, q % 4 ? .35 : 1);
+      for (let yr = Math.ceil(y0); yr < y1; yr++) s += `<text x="${x(yr + .5)}" y="${gy + 12}" font-size="10" font-weight="600" text-anchor="middle" fill="var(--fg)" ${mono}>${span > 6 ? "'" + String(yr).slice(2) : yr}</text>`;
+    } else if (span > 1 / 12 + .01) {
+      for (let m = Math.ceil(y0 * 12 - .01); m < y1 * 12 - .01; m++) { s += line(m / 12, m % 12 ? .5 : 1); s += lab(m / 12 + 1 / 24, MONTHS[m % 12].slice(0, span > .6 ? 1 : 3), "middle"); }
+    } else {
+      const m0 = Math.round(y0 * 12), days = new Date(Math.floor(m0 / 12), m0 % 12 + 1, 0).getDate();
+      for (let dd = 1; dd <= days; dd += 7) { const t = y0 + (dd - 1) / days / 12 * (12 * (y1 - y0)); s += line(t, .5) + lab(t, dd); }
+    }
+    /* year row: each year that shows gets its name over its own part of the window */
+    if (span <= 1.01) for (let yr = Math.floor(y0); yr < y1; yr++) { const a = Math.max(yr, y0), b = Math.min(yr + 1, y1); if (b - a < .02) continue;
+      if (yr > y0) s += `<line x1="${x(yr)}" x2="${x(yr)}" y1="${gy}" y2="${H - 2}" stroke="var(--fg)" opacity=".5"/>`;
+      const narrow = x(b) - x(a) < 44;
+      s += `<text x="${x(a) + 3}" y="${gy + 28}" font-size="10.5" font-weight="700" fill="var(--fg)" ${mono}>${span <= 1 / 12 + .01 ? MONTHS[Math.round(y0 * 12) % 12] + " " : ""}${narrow ? "'" + String(yr).slice(2) : yr}</text>`; }
+    if (!names.length && show && show.meds) s += `<text x="${w / 2}" y="${gy / 2 + 4}" font-size="11.5" text-anchor="middle" fill="var(--muted)">No medicines in this period</text>`;
+  } else if (months) {
     for (let yr = y0; yr < y1; yr++) for (let mo = 0; mo < 12; mo++) {
       const xx = x(yr + mo / 12), mid = x(yr + (mo + .5) / 12);
       s += `<line x1="${xx}" x2="${xx}" y1="4" y2="${gy}" stroke="var(--line)" ${mo ? 'opacity=".45"' : ""}/>`;
@@ -83,15 +111,15 @@ function medGantt(w = 360, ppy = 0, show = null) {
     const step = (w - L - R) / (y1 - y0) < 22 ? 2 : 1;
     for (let yr = y0; yr <= y1; yr += step) s += `<line x1="${x(yr)}" x2="${x(yr)}" y1="4" y2="${gy}" stroke="var(--line)"/><text x="${x(yr)}" y="${H - 6}" font-size="9.5" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)" ${mono}>${ppy ? yr : String(yr).slice(2)}</text>`;
   }
-  const today = x(nowY); s += `<line x1="${today}" x2="${today}" y1="4" y2="${gy}" stroke="var(--accent)" stroke-dasharray="3 3"/>`;
+  const today = x(nowY); if (nowY >= y0 && nowY <= y1) s += `<line x1="${today}" x2="${today}" y1="4" y2="${gy}" stroke="var(--accent)" stroke-dasharray="3 3"/>`;
   names.forEach((n, i) => {
     const yy = top + 8 + i * rowH, ms = meds.filter((m) => m.name === n), st = isSteroid(n);
     const why = ms.filter((m) => m.stop && m.why && m.why !== "Course finished").map((m) => m.why.toLowerCase()).slice(-1)[0];
     const label = `${esc(n)}${st ? ' <tspan fill="var(--muted)" font-weight="400">· steroid</tspan>' : ""}${why ? ` <tspan fill="var(--muted)" font-weight="400">· ${esc(why)}</tspan>` : ""}`;
     /* zoomed in, names are laid over the chart on the left so they stay put while it scrolls */
     if (ppy) medGantt.names.push({ y: yy - 3, label });
-    else s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)">${label}</text>`;
-    ms.forEach((m) => { const a = roughYear(m.start, "start"), b = m.stopDay ? roughYear(m.stopDay, "end") : m.stop ? roughYear(m.stop, "end") : nowY; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/><rect x="${x(a)}" y="${yy + 5}" width="${Math.max(16, x(b) - x(a))}" height="24" fill="transparent" data-med="${m.id}"/>`; });
+    else s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)"${win ? ' paint-order="stroke" stroke="var(--surface)" stroke-width="3" stroke-linejoin="round"' : ""}>${label}</text>`;
+    ms.forEach((m) => { const [a, b] = clip(roughYear(m.start, "start"), mEnd(m)); if (b <= a) return; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/><rect x="${x(a)}" y="${yy + 5}" width="${Math.max(16, x(b) - x(a))}" height="24" fill="transparent" data-med="${m.id}"/>`; });
   });
   medGantt.sc = { x, y0, y1 };
   return S(`0 0 ${w} ${H}`, s, ppy ? `width="${w}" height="${H}" style="display:block;max-width:none"` : `style="width:100%;min-width:340px;height:auto"`);

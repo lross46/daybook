@@ -392,3 +392,8 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .visit .vt{font-size:12.5px;color:var(--muted)}
 .visit .chev{color:var(--muted)}
 .vsum{font-size:12.5px;color:var(--muted);line-height:1.5}
+#tlNav .navbtn{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;width:44px;height:38px;font-size:19px;line-height:1}
+#tlNav .navbtn:disabled{opacity:.35}
+.tllbl{font-family:var(--f-data);font-size:14px;text-align:center;flex:1}
+#zoomSeg button{font-size:12.5px;padding-left:0;padding-right:0}
+.tlmini{cursor:pointer;border-top:1px solid var(--line);padding-top:6px}

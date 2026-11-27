@@ -47,7 +47,7 @@ function applyFind(scope) {
   for (const grp of scope.querySelectorAll("[data-fgroup]")) grp.hidden = !grp.querySelector("[data-fi]:not([hidden])");
   for (const e of scope.querySelectorAll("[data-fempty]")) e.hidden = any;
   if (q || g !== "all") for (const fb of scope.querySelectorAll('[data-act="listToggle"][data-fold]:not([data-fold="tlBody"])')) listToggle(fb, true);
-  if (q && first && first.dataset.y && scope.querySelector("#ganttBox")) jumpTo(+first.dataset.y, true);
+  if (q && first && first.dataset.y && scope.querySelector("#chartWrap")) jumpTo(+first.dataset.y, true);
 }
 document.addEventListener("input", (e) => { if (e.target.matches("[data-find]")) applyFind(e.target.closest("[data-fscope]")); });
 document.addEventListener("click", (e) => {
@@ -111,7 +111,7 @@ function listToggle(el, open) {
   l.hidden = open === undefined ? !l.hidden : !open; foldOpen[tab + "." + id] = !l.hidden;
   const b = el || $(`[data-act="listToggle"][data-fold="${id}"]`) || $('[data-act="listToggle"]:not([data-fold])');
   if (b) { b.setAttribute("aria-expanded", !l.hidden); const c = b.querySelector(".chev"); if (c) c.style.transform = l.hidden ? "" : "rotate(90deg)"; }
-  if (id === "tlBody" && !l.hidden) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
+  if (id === "tlBody" && !l.hidden) drawChart();
 }
 function profileEdit() {
   const p = data.profile;

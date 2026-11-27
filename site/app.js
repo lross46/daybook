@@ -520,31 +520,59 @@ function steroidCourses() {
   return { all: list, recent };
 }
 /* ppy = pixels per year: 0 fits everything in w; bigger values make a wider chart that scrolls sideways */
-function medGantt(w = 360, ppy = 0, show = null) {
+/* win = [from, to] in decimal years: draw only that window (History timeline zoom); none = whole history */
+function medGantt(w = 360, ppy = 0, show = null, win = null) {
   const meds = live(data.meds).filter((m) => m.start);
-  medGantt.names = [];
+  medGantt.names = []; medGantt.full = null;
   const anyMoment = live(data.flares).some((f) => f.start) || live(data.moments).some((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
   if (!meds.length && !anyMoment) return "";
   const names = [...new Set(meds.sort((a, b) => roughSort(a.start) < roughSort(b.start) ? -1 : 1).map((m) => m.name))];
   const flares = live(data.flares).filter((f) => f.start), moms = live(data.moments).filter((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
-  const nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
+  let nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
+  medGantt.full = [y0, y1];
+  const mEnd = (m) => (m.stopDay ? roughYear(m.stopDay, "end") : m.stop ? roughYear(m.stop, "end") : nowY);
+  if (win) {
+    [y0, y1] = win;
+    for (let k = names.length - 1; k >= 0; k--) if (!meds.some((m) => m.name === names[k] && roughYear(m.start, "start") < y1 && mEnd(m) > y0)) names.splice(k, 1);
+  }
+  const clip = (a, b) => [Math.max(a, y0), Math.min(b, y1)];
   /* layers switched off on the History chart */
   if (show) { if (!show.meds) names.length = 0; if (!show.flares) flares.length = 0; for (let k = moms.length - 1; k >= 0; k--) if (!show[moms[k].type === "colonoscopy" ? "scope" : "hosp"]) moms.splice(k, 1); }
   const L = 8, R = 8;
   if (ppy) w = Math.max(w, Math.round((y1 - y0) * ppy) + L + R);
-  const months = ppy >= 150, top = flares.length || moms.length ? 24 : 0, foot = months ? 34 : 22;
+  const months = ppy >= 150, top = flares.length || moms.length ? 24 : 0, foot = months || win ? 34 : 22;
   const x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R), rowH = 29, H = top + names.length * rowH + 8 + foot;
   const gy = H - foot;
   let s = "";
   /* flares as orange bands behind every medicine, colonoscopies and hospital stays as marks on top */
-  for (const f of flares) { const a = roughYear(f.start, "start"), b = f.end ? roughYear(f.end, "end") : nowY; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${gy - 2}" fill="var(--mod)" opacity=".2" data-flare="${f.id}"/>`; }
+  for (const f of flares) { const [a, b] = clip(roughYear(f.start, "start"), f.end ? roughYear(f.end, "end") : nowY); if (b <= a) continue; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${gy - 2}" fill="var(--mod)" opacity=".2" data-flare="${f.id}"/>`; }
   for (const m of moms) {
-    const cx = x(roughYear(m.when));
+    const t = roughYear(m.when); if (t < y0 || t > y1) continue;
+    const cx = x(t);
     if (m.type === "colonoscopy") s += `<path d="M${cx} 5l6 7-6 7-6-7z" fill="var(--fg)" data-moment="${m.id}"/><rect x="${cx - 11}" y="1" width="22" height="22" fill="transparent" data-moment="${m.id}"/>`;
     else s += `<g transform="translate(${cx - 8} 3)" data-moment="${m.id}"><rect width="16" height="16" fill="transparent"/>${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="16" height="16" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
   }
   const mono = 'font-family="ui-monospace,Menlo,monospace"';
-  if (months) {
+  if (win) {
+    /* window ticks: the bottom row always names the year(s) shown, so a month never floats without its year */
+    const span = y1 - y0, line = (t, o = 1) => `<line x1="${x(t)}" x2="${x(t)}" y1="4" y2="${gy}" stroke="var(--line)" opacity="${o}"/>`;
+    const lab = (t, txt, a = "start") => `<text x="${x(t) + (a === "start" ? 3 : 0)}" y="${gy + 12}" font-size="9.5" text-anchor="${a}" fill="var(--muted)" ${mono}>${txt}</text>`;
+    if (span > 1.01) {
+      for (let q = Math.ceil(y0 * 4); q < y1 * 4; q++) s += line(q / 4, q % 4 ? .35 : 1);
+      for (let yr = Math.ceil(y0); yr < y1; yr++) s += `<text x="${x(yr + .5)}" y="${gy + 12}" font-size="10" font-weight="600" text-anchor="middle" fill="var(--fg)" ${mono}>${span > 6 ? "'" + String(yr).slice(2) : yr}</text>`;
+    } else if (span > 1 / 12 + .01) {
+      for (let m = Math.ceil(y0 * 12 - .01); m < y1 * 12 - .01; m++) { s += line(m / 12, m % 12 ? .5 : 1); s += lab(m / 12 + 1 / 24, MONTHS[m % 12].slice(0, span > .6 ? 1 : 3), "middle"); }
+    } else {
+      const m0 = Math.round(y0 * 12), days = new Date(Math.floor(m0 / 12), m0 % 12 + 1, 0).getDate();
+      for (let dd = 1; dd <= days; dd += 7) { const t = y0 + (dd - 1) / days / 12 * (12 * (y1 - y0)); s += line(t, .5) + lab(t, dd); }
+    }
+    /* year row: each year that shows gets its name over its own part of the window */
+    if (span <= 1.01) for (let yr = Math.floor(y0); yr < y1; yr++) { const a = Math.max(yr, y0), b = Math.min(yr + 1, y1); if (b - a < .02) continue;
+      if (yr > y0) s += `<line x1="${x(yr)}" x2="${x(yr)}" y1="${gy}" y2="${H - 2}" stroke="var(--fg)" opacity=".5"/>`;
+      const narrow = x(b) - x(a) < 44;
+      s += `<text x="${x(a) + 3}" y="${gy + 28}" font-size="10.5" font-weight="700" fill="var(--fg)" ${mono}>${span <= 1 / 12 + .01 ? MONTHS[Math.round(y0 * 12) % 12] + " " : ""}${narrow ? "'" + String(yr).slice(2) : yr}</text>`; }
+    if (!names.length && show && show.meds) s += `<text x="${w / 2}" y="${gy / 2 + 4}" font-size="11.5" text-anchor="middle" fill="var(--muted)">No medicines in this period</text>`;
+  } else if (months) {
     for (let yr = y0; yr < y1; yr++) for (let mo = 0; mo < 12; mo++) {
       const xx = x(yr + mo / 12), mid = x(yr + (mo + .5) / 12);
       s += `<line x1="${xx}" x2="${xx}" y1="4" y2="${gy}" stroke="var(--line)" ${mo ? 'opacity=".45"' : ""}/>`;
@@ -556,15 +584,15 @@ function medGantt(w = 360, ppy = 0, show = null) {
     const step = (w - L - R) / (y1 - y0) < 22 ? 2 : 1;
     for (let yr = y0; yr <= y1; yr += step) s += `<line x1="${x(yr)}" x2="${x(yr)}" y1="4" y2="${gy}" stroke="var(--line)"/><text x="${x(yr)}" y="${H - 6}" font-size="9.5" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)" ${mono}>${ppy ? yr : String(yr).slice(2)}</text>`;
   }
-  const today = x(nowY); s += `<line x1="${today}" x2="${today}" y1="4" y2="${gy}" stroke="var(--accent)" stroke-dasharray="3 3"/>`;
+  const today = x(nowY); if (nowY >= y0 && nowY <= y1) s += `<line x1="${today}" x2="${today}" y1="4" y2="${gy}" stroke="var(--accent)" stroke-dasharray="3 3"/>`;
   names.forEach((n, i) => {
     const yy = top + 8 + i * rowH, ms = meds.filter((m) => m.name === n), st = isSteroid(n);
     const why = ms.filter((m) => m.stop && m.why && m.why !== "Course finished").map((m) => m.why.toLowerCase()).slice(-1)[0];
     const label = `${esc(n)}${st ? ' <tspan fill="var(--muted)" font-weight="400">· steroid</tspan>' : ""}${why ? ` <tspan fill="var(--muted)" font-weight="400">· ${esc(why)}</tspan>` : ""}`;
     /* zoomed in, names are laid over the chart on the left so they stay put while it scrolls */
     if (ppy) medGantt.names.push({ y: yy - 3, label });
-    else s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)">${label}</text>`;
-    ms.forEach((m) => { const a = roughYear(m.start, "start"), b = m.stopDay ? roughYear(m.stopDay, "end") : m.stop ? roughYear(m.stop, "end") : nowY; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/><rect x="${x(a)}" y="${yy + 5}" width="${Math.max(16, x(b) - x(a))}" height="24" fill="transparent" data-med="${m.id}"/>`; });
+    else s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)"${win ? ' paint-order="stroke" stroke="var(--surface)" stroke-width="3" stroke-linejoin="round"' : ""}>${label}</text>`;
+    ms.forEach((m) => { const [a, b] = clip(roughYear(m.start, "start"), mEnd(m)); if (b <= a) return; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/><rect x="${x(a)}" y="${yy + 5}" width="${Math.max(16, x(b) - x(a))}" height="24" fill="transparent" data-med="${m.id}"/>`; });
   });
   medGantt.sc = { x, y0, y1 };
   return S(`0 0 ${w} ${H}`, s, ppy ? `width="${w}" height="${H}" style="display:block;max-width:none"` : `style="width:100%;min-width:340px;height:auto"`);
@@ -688,7 +716,7 @@ function applyFind(scope) {
   for (const grp of scope.querySelectorAll("[data-fgroup]")) grp.hidden = !grp.querySelector("[data-fi]:not([hidden])");
   for (const e of scope.querySelectorAll("[data-fempty]")) e.hidden = any;
   if (q || g !== "all") for (const fb of scope.querySelectorAll('[data-act="listToggle"][data-fold]:not([data-fold="tlBody"])')) listToggle(fb, true);
-  if (q && first && first.dataset.y && scope.querySelector("#ganttBox")) jumpTo(+first.dataset.y, true);
+  if (q && first && first.dataset.y && scope.querySelector("#chartWrap")) jumpTo(+first.dataset.y, true);
 }
 document.addEventListener("input", (e) => { if (e.target.matches("[data-find]")) applyFind(e.target.closest("[data-fscope]")); });
 document.addEventListener("click", (e) => {
@@ -752,7 +780,7 @@ function listToggle(el, open) {
   l.hidden = open === undefined ? !l.hidden : !open; foldOpen[tab + "." + id] = !l.hidden;
   const b = el || $(`[data-act="listToggle"][data-fold="${id}"]`) || $('[data-act="listToggle"]:not([data-fold])');
   if (b) { b.setAttribute("aria-expanded", !l.hidden); const c = b.querySelector(".chev"); if (c) c.style.transform = l.hidden ? "" : "rotate(90deg)"; }
-  if (id === "tlBody" && !l.hidden) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
+  if (id === "tlBody" && !l.hidden) drawChart();
 }
 function profileEdit() {
   const p = data.profile;
@@ -844,7 +872,8 @@ let chartShow = Object.assign({ meds: true, flares: true, scope: true, hosp: tru
 function timelineCard() {
   return `<div class="card"><button class="about fold" data-act="listToggle" data-fold="tlBody" aria-expanded="false"><span class="grow"><b>Timeline</b><span class="sub">Medicines, flares, colonoscopies and hospital stays on one chart</span></span><span class="chev" aria-hidden="true">›</span></button>
     <div id="tlBody" hidden style="display:flex;flex-direction:column;gap:10px">
-    <div class="seg" id="zoomSeg" style="grid-template-columns:repeat(3,1fr)">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div>
+    <div class="seg" id="zoomSeg" style="grid-template-columns:repeat(6,1fr)">${TL_ZOOMS.map(([l], i) => `<button data-tlz="${i}" aria-pressed="${i === tlZ}">${l}</button>`).join("")}</div>
+    <div class="row" id="tlNav"><button class="navbtn" data-tlstep="-1" aria-label="Earlier">‹</button><b id="tlLbl" class="tllbl"></b><button class="navbtn" data-tlstep="1" aria-label="Later">›</button></div>
     <div class="chips layers" role="group" aria-label="Show on the chart">${LAYERS.map(([k, l, sw]) => `<button type="button" data-layer="${k}" aria-pressed="${chartShow[k]}">${sw} ${l}</button>`).join("")}</div>
     <div id="chartWrap"></div>
     <div class="sub">Tap a bar or mark to open it. Tap the buttons above to show or hide things.</div></div></div>`;
@@ -853,23 +882,53 @@ document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-layer]"); if (!b) return;
   chartShow[b.dataset.layer] = !chartShow[b.dataset.layer]; LS.set("gl.show", chartShow);
   b.setAttribute("aria-pressed", chartShow[b.dataset.layer]);
-  const gb = $("#ganttBox"), left = gb ? gb.scrollLeft : 0; drawChart(); if ($("#ganttBox")) $("#ganttBox").scrollLeft = left;
+  drawChart();
 });
+/* zoom windows: how many years each step shows (0 = everything) */
+const TL_ZOOMS = [["All", 0], ["5 yrs", 5], ["1 yr", 1], ["6 mo", .5], ["3 mo", .25], ["1 mo", 1 / 12]];
+let tlZ = LS.get("gl.tlz", 0), tlEnd = null;
+const monthEnd = () => Math.ceil(roughYear(todayIso(), "start") * 12 + .001) / 12;
+function tlWindow() {
+  const span = TL_ZOOMS[tlZ][1]; if (!span) return null;
+  if (tlEnd == null) tlEnd = monthEnd();
+  medGantt(360); if (!medGantt.full) return null; const [f0] = medGantt.full, top = monthEnd();
+  tlEnd = Math.min(Math.max(tlEnd, f0 + span), top); tlEnd = Math.round(tlEnd * 12) / 12;
+  return [tlEnd - span, tlEnd];
+}
+const fmtM = (t) => { const m = Math.round(t * 12); return MONTHS[m % 12] + " " + Math.floor(m / 12); };
 function drawChart() {
   const w = $("#chartWrap"); if (!w) return;
-  const chart = medGantt(360, medZoom, chartShow), sc = medGantt.sc, years = [];
-  for (let y = Math.floor(sc.y0); y < Math.ceil(sc.y1); y++) years.push(y);
-  w.innerHTML = `${medZoom ? `<div class="jump" aria-label="Go to year">${years.map((y) => `<button type="button" data-jump="${y}">${y}</button>`).join("")}</div>` : ""}
-    <div style="position:relative"><div class="wide" id="ganttBox">${chart}</div>${medGantt.names.map((n) => `<svg class="gname" style="top:${n.y}px" height="16" width="300"><text x="4" y="12" font-size="11" font-weight="600" fill="var(--fg)" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">${n.label}</text></svg>`).join("")}</div>`;
-  const jr = w.querySelector(".jump"); if (jr) jr.scrollLeft = jr.scrollWidth;
+  const win = tlWindow(), chart = medGantt(360, 0, chartShow, win);
+  if (!medGantt.full) { w.innerHTML = `<div class="sub">Add medicines or events to see them here.</div>`; return; }
+  const [f0, f1] = medGantt.full;
+  const lbl = $("#tlLbl"), span = TL_ZOOMS[tlZ][1];
+  if (lbl) lbl.textContent = !win ? `${Math.floor(f0)} to now` : span >= 5 ? `${Math.round(win[0])} – ${Math.round(win[1]) - 1}` : span <= 1 / 12 ? fmtM(win[0]) : `${fmtM(win[0])} – ${fmtM(win[1] - 1 / 12)}`;
+  for (const b of $$("[data-tlstep]")) { b.disabled = !win || (+b.dataset.tlstep < 0 ? win[0] <= f0 + .001 : win[1] >= monthEnd() - .001); }
+  /* mini-map: the whole history as a thin strip; the box shows where the window is */
+  const mw = 360, mx = (t) => 4 + (t - f0) / (f1 - f0) * (mw - 8);
+  let m = "";
+  if (chartShow.flares) for (const f of live(data.flares).filter((x) => x.start)) { const a = roughYear(f.start, "start"), b = f.end ? roughYear(f.end, "end") : roughYear(todayIso()); m += `<rect x="${mx(a)}" y="3" width="${Math.max(1.5, mx(b) - mx(a))}" height="24" fill="var(--mod)" opacity=".3"/>`; }
+  const nm = [...new Set(live(data.meds).filter((x) => x.start).sort((a, b) => (roughSort(a.start) < roughSort(b.start) ? -1 : 1)).map((x) => x.name))];
+  if (chartShow.meds) nm.forEach((n, i) => { for (const md of live(data.meds).filter((q) => q.name === n && q.start)) { const a = roughYear(md.start, "start"), b = md.stopDay ? roughYear(md.stopDay, "end") : md.stop ? roughYear(md.stop, "end") : roughYear(todayIso()); m += `<rect x="${mx(a)}" y="${4 + (i % 6) * 4}" width="${Math.max(1.5, mx(b) - mx(a))}" height="3" fill="${medColor(md)}"/>`; } });
+  const step = f1 - f0 > 12 ? 2 : 1;
+  for (let y = Math.ceil(f0); y < f1; y += step) m += `<text x="${mx(y)}" y="40" font-size="9" text-anchor="middle" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">'${String(y).slice(2)}</text>`;
+  if (win) m += `<rect x="${mx(win[0])}" y="1" width="${Math.max(6, mx(win[1]) - mx(win[0]))}" height="28" rx="4" fill="var(--accent)" fill-opacity=".14" stroke="var(--accent)" stroke-width="2"/>`;
+  w.innerHTML = `<div id="ganttBox">${chart.replace("min-width:340px;", "")}</div><div class="tlmini" id="tlMini" role="button" aria-label="Whole history: tap to jump there">${S(`0 0 ${mw} 44`, m, 'style="width:100%;height:auto;display:block"')}</div>`;
 }
-/* scroll the chart so the year sits near the left edge; zoom in first if the whole history is showing */
+/* show the window that holds year y (used by search) */
 function jumpTo(y, soft) {
-  if (!medZoom || $("#tlBody")?.hidden) { if (soft) return; medZoom = 70; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", +b.dataset.zoom === medZoom); drawChart(); }
-  const gb = $("#ganttBox"); if (!gb) return;
-  gb.scrollTo({ left: Math.max(0, medGantt.sc.x(y) - 30), behavior: "smooth" });
-  for (const b of $$("[data-jump]")) b.setAttribute("aria-pressed", +b.dataset.jump === y);
+  if ($("#tlBody")?.hidden) return;
+  if (!TL_ZOOMS[tlZ][1]) { if (soft) return; tlZ = 2; LS.set("gl.tlz", tlZ); for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", +b.dataset.tlz === tlZ); }
+  tlEnd = Math.floor(y) + 1; drawChart();
 }
+document.addEventListener("click", (e) => {
+  const z = e.target.closest("[data-tlz]");
+  if (z) { tlZ = +z.dataset.tlz; LS.set("gl.tlz", tlZ); for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", b === z); drawChart(); return; }
+  const st = e.target.closest("[data-tlstep]");
+  if (st) { tlEnd += +st.dataset.tlstep * TL_ZOOMS[tlZ][1]; drawChart(); return; }
+  const mm = e.target.closest("#tlMini");
+  if (mm && TL_ZOOMS[tlZ][1]) { const r = mm.getBoundingClientRect(), [f0, f1] = medGantt.full, t = f0 + ((e.clientX - r.left) / r.width * 360 - 4) / 352 * (f1 - f0); tlEnd = t + TL_ZOOMS[tlZ][1] / 2; drawChart(); }
+});
 document.addEventListener("click", (e) => { const j = e.target.closest("[data-jump]"); if (j) jumpTo(+j.dataset.jump); });
 
 /* ---------- Doctor tab ---------- */
@@ -1284,7 +1343,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 49</div>
+  <div class="sub">App version 50</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });

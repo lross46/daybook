@@ -314,9 +314,11 @@ function barChart(keys, opts = {}) {
 }
 /* What comes before bad days: for each tag, compare the 2 days after tagged days with the 2 days after untagged days.
    Uses the day score (stools, night, blood, urgency...), leaves out flare days, and only judges a tag used 5+ times. */
+let bdWin = LS.get("gl.bdwin", 3);
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-bdwin]"); if (!b) return; bdWin = +b.dataset.bdwin; LS.set("gl.bdwin", bdWin); renderTrends(); });
 function badDays(keys) {
   const ok = (k) => dayLogged(k) && !inFlare(k);
-  const after = (k) => { const w = [addDays(k, 1), addDays(k, 2)].filter(ok); return w.length ? w.reduce((a, x) => a + sccai(data.days[x]), 0) / w.length : null; };
+  const after = (k) => { const w = Array.from({ length: bdWin }, (_, i) => addDays(k, i + 1)).filter(ok); return w.length ? Math.max(...w.map((x) => sccai(data.days[x]))) : null; }; /* the worst day in the window */
   const days = keys.filter(ok).map((k) => ({ k, tags: data.days[k].tags || [], out: after(k) })).filter((d) => d.out !== null);
   if (days.length < 10) return null;
   const res = [];
@@ -336,10 +338,11 @@ function badDaysCard(keys) {
   const clear = r ? r.filter((x) => x.verdict === 3).map((x) => x.l) : [];
   const sum = r === null ? "Needs at least 10 logged days outside flares" : clear.length ? `Clear sign: ${clear.join(", ")}` : "No clear signs in this period";
   return `<div class="card">${foldHead("trigBody", "What comes before bad days", sum)}<div id="trigBody" ${foldOpen.trigBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:8px">
+    <div class="seg" style="grid-template-columns:repeat(3,1fr)">${[2, 3, 4].map((n) => `<button data-bdwin="${n}" aria-pressed="${n === bdWin}">${n} days after</button>`).join("")}</div>
     ${r === null ? `<div class="sub">Keep logging. It needs at least 10 days outside flares in the period picked above.</div>` : !r.length ? `<div class="sub">No tags used in this period yet. Add them on Today under "Anything that might matter?".</div>` :
-    r.map((x) => { const [vl, vc, vb] = VERDICT[x.verdict]; return `<details class="bd"><summary>${ico(x.t)}<span class="grow"><b>${esc(x.l)}</b><span class="sub">${x.n < 5 ? `used ${x.n} time${x.n > 1 ? "s" : ""}, needs 5` : `worse in the next 2 days ${x.worse} of ${x.n} times`}</span></span><span class="vd" style="color:${vc};background:${vb}">${vl}</span></summary>
+    r.map((x) => { const [vl, vc, vb] = VERDICT[x.verdict]; return `<details class="bd"><summary>${ico(x.t)}<span class="grow"><b>${esc(x.l)}</b><span class="sub">${x.n < 5 ? `used ${x.n} time${x.n > 1 ? "s" : ""}, needs 5` : `worse in the next ${bdWin} days ${x.worse} of ${x.n} times`}</span></span><span class="vd" style="color:${vc};background:${vb}">${vl}</span></summary>
       <div class="bdd">${x.days.map((k) => `<button data-day="${k}">${esc(fmtDay(k))}</button>`).join("")}</div></details>`; }).join("")}
-    <div class="sub">Compares the 2 days after a tag with the 2 days after days without it, using the day score. Flare days are left out. A pattern, not proof. Tap a tag to see its days.</div></div></div>`;
+    <div class="sub">Compares the days after a tag with the days after days without it, using the day score. Flare days are left out. A pattern, not proof. Tap a tag to see its days.</div></div></div>`;
 }
 let tPeriod = LS.get("gl.tperiod", 1);
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-tperiod]"); if (!b) return; tPeriod = +b.dataset.tperiod; LS.set("gl.tperiod", tPeriod); renderTrends(); });

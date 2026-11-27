@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gut Log">
+<meta name="theme-color" content="#eef3f2">
+<title>Gut Log</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header>
+    <div><h1 id="ttl">Today</h1><div class="sub" id="hsub"></div></div>
+    <button class="hdrbtn off" id="syncBtn" data-act="settings"><span id="syncTxt">On phone only</span></button>
+  </header>
+  <main id="main"></main>
+</div>
+<nav><div class="in" id="nav"></div></nav>
+<button class="wc" id="wcBtn" data-act="toilet" aria-label="Find a toilet">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><text x="12" y="12.5" font-size="7" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">WC</text></svg>Toilet</button>
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="print"></div>
+<script src="app.js"></script>
+</body>
+</html>

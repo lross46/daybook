@@ -1,0 +1,125 @@
+
+/* ---------- History ---------- */
+const MTYPES = [["colonoscopy", "Colonoscopy", "scope", "var(--accent)"], ["flare", "Flare", "flag", "var(--mod)"], ["hospital", "Hospital stay", "hospital", "var(--sev)"], ["surgery", "Surgery", "cut", "var(--sev)"], ["diagnosis", "Diagnosis", "diag", "var(--accent)"], ["other", "Other", "pen", "var(--muted)"]];
+const mtype = (k) => MTYPES.find((m) => m[0] === k) || MTYPES[5];
+const SEV = ["Mild", "Moderate", "Severe"];
+const RESULT = ["No inflammation", "Mild", "Moderate", "Severe"];
+const colonoscopies = () => live(data.moments).filter((m) => m.type === "colonoscopy").sort((a, b) => (roughSort(a.when) < roughSort(b.when) ? -1 : 1));
+const failedMeds = () => pastMeds().filter((m) => ["Didn't work", "Stopped working", "Side effects"].includes(m.why));
+
+function timelineItems() {
+  const out = [];
+  for (const m of live(data.moments)) {
+    const [, label, ic, c] = mtype(m.type), d = m.details || {};
+    let desc = "";
+    if (m.type === "colonoscopy") desc = [d.result, d.extent && "reached " + d.extent.toLowerCase(), d.polyps && d.polyps !== "None" ? d.polyps.toLowerCase() : d.polyps === "None" ? "no polyps" : "", d.biopsy && "biopsy: " + d.biopsy, d.nextDue && "next due " + d.nextDue].filter(Boolean).join(" · ");
+    if (m.type === "hospital") desc = d.days ? `${d.days} days` : "";
+    if (m.type === "surgery") desc = d.what || "";
+    if (m.type === "diagnosis") desc = d.extent || "";
+    out.push({ key: roughSort(m.when), when: fmtRough(m.when), title: m.type === "other" ? d.title || "Other" : m.type === "diagnosis" ? "Diagnosed" : label, desc: [desc, m.note].filter(Boolean).join(". "), ic, c, act: `data-moment="${m.id}"` });
+  }
+  for (const f of live(data.flares)) out.push({ key: roughSort(f.start), when: fmtRough(f.start), title: f.end ? "Flare" : "Flare (ongoing)", desc: [f.sev, f.end ? "until " + fmtRough(f.end) : "", f.note].filter(Boolean).join(" · "), ic: "flag", c: f.sev === "Severe" ? "var(--sev)" : "var(--mod)", act: `data-flare="${f.id}"` });
+  for (const m of live(data.meds)) {
+    out.push({ key: roughSort(m.start), when: fmtRough(m.start), title: `Started ${m.name}`, desc: [m.dose, m.freq].filter(Boolean).join(" · ") + (isSteroid(m.name) ? " · steroid" : ""), ic: "pill", c: medColor(m), act: `data-med="${m.id}"`, auto: 1 });
+    for (const ch of m.changes || []) out.push({ key: roughSort(ch.from), when: fmtRough(ch.from), title: `${m.name} dose changed`, desc: [ch.dose, ch.freq].filter(Boolean).join(" · "), ic: "pill", c: medColor(m), act: `data-med="${m.id}"`, auto: 1 });
+    if (m.stop) out.push({ key: roughSort(m.stopDay || m.stop), when: fmtRough(m.stopDay || m.stop), title: `Stopped ${m.name}`, desc: [m.why, m.note].filter(Boolean).join(": "), ic: "pill", c: medColor(m), act: `data-med="${m.id}"`, auto: 1 });
+  }
+  return out.sort((a, b) => (a.key < b.key ? 1 : -1));
+}
+function lifeStrip(w = 360) {
+  const t = todayIso(), nowY = roughYear(t);
+  const years = [data.profile.diagYear && +data.profile.diagYear, ...live(data.flares).map((f) => roughYear(f.start)), ...live(data.moments).map((m) => roughYear(m.when)), ...live(data.meds).map((m) => roughYear(m.start))].filter(Boolean);
+  if (!years.length) return "";
+  const y0 = Math.floor(Math.min(...years)), y1 = Math.ceil(nowY + .01), L = 8, R = 8, x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R);
+  let s = `<rect x="${x(data.profile.diagYear ? +data.profile.diagYear : y0)}" y="44" width="${x(nowY) - x(data.profile.diagYear ? +data.profile.diagYear : y0)}" height="16" rx="3" fill="var(--ok)" opacity=".55"/>`;
+  for (const f of live(data.flares)) {
+    const sv = Math.max(1, SEV.indexOf(f.sev) + 1) || 2, a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY, h = [0, 26, 34, 44][sv];
+    s += `<rect x="${x(a)}" y="${52 - h / 2}" width="${Math.max(4, x(b) - x(a))}" height="${h}" rx="3" fill="${SC[sv]}"/>`;
+  }
+  for (const m of live(data.moments)) {
+    if (m.type === "colonoscopy") s += `<path d="M${x(roughYear(m.when))} 82l6 7-6 7-6-7z" fill="var(--fg)"/>`;
+    if (m.type === "hospital" || m.type === "surgery") s += `<g transform="translate(${x(roughYear(m.when)) - 9} 4)">${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="18" height="18" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
+  }
+  const step = y1 - y0 > 12 ? 2 : 1;
+  for (let yr = y0; yr <= y1; yr += step) s += `<text x="${x(yr)}" y="114" font-size="9.5" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${yr}</text>`;
+  return S(`0 0 ${w} 120`, s, `style="width:100%;min-width:340px;height:auto"`);
+}
+function profileRows() {
+  const p = data.profile, cs = colonoscopies(), last = cs[cs.length - 1], fm = failedMeds(), st = steroidCourses().all;
+  return [
+    ["diag", "Diagnosed", p.diagYear ? `${p.diagYear} · ${new Date().getFullYear() - p.diagYear} years ago` : "Not set", 0],
+    ["scope", "Extent", p.extentNow || p.extentMax ? [p.extentNow && `${p.extentNow} now`, p.extentMax && p.extentMax !== p.extentNow && `furthest ever: ${p.extentMax.toLowerCase()}`].filter(Boolean).join(" · ") : "Not set", 0],
+    ["scope", "Colonoscopies", cs.length ? `${cs.length} · last ${fmtRough(last.when)}: ${[last.details?.result, last.details?.polyps === "None" ? "no polyps" : last.details?.polyps?.toLowerCase()].filter(Boolean).join(", ") || "result not set"}${last.details?.nextDue ? " · next due " + last.details.nextDue : ""}` : "None added", 1],
+    ["pill", "Medicines that failed", fm.length ? fm.map((m) => `${m.name} (${m.why.toLowerCase()})`).join(", ") : "None", 1],
+    ["steroid", "Steroid courses ever", st.length ? `${st.length} (${st.map((m) => (m.start || "").slice(0, 4)).join(", ")}) · ${steroidCourses().recent.length} in the last 12 months` : "None", 1],
+    ["joint", "Other symptoms ever", (p.symptomsEver || []).length ? p.symptomsEver.join(", ") : "None", 0],
+  ];
+}
+function renderHistory() {
+  const items = timelineItems(), strip = lifeStrip();
+  $("#main").innerHTML = `
+  <div class="card"><div class="row"><div class="label">About my colitis</div><button class="btn small" data-act="profileEdit">Edit</button></div>
+    <div class="kv">${profileRows().map(([k, t, v, a]) => `<div><span class="ki">${S("0 0 24 24", I[k], stroke)}</span><div style="min-width:0"><div class="sub">${t}${a ? '<span class="auto">auto</span>' : ""}</div><div style="font-weight:500">${esc(v)}</div></div></div>`).join("")}</div>
+    <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and the moments below.</div></div>
+  ${strip ? `<div class="card"><div class="label">At a glance</div><div class="wide">${strip}</div><div class="legend"><span><i class="s0" style="opacity:.55"></i>Calm</span><span><i class="s1"></i>Mild flare</span><span><i class="s2"></i>Flare</span><span><i class="s3"></i>Severe</span><span>◆ Colonoscopy</span></div></div>` : ""}
+  <div class="card"><div class="label">Key moments</div>
+    ${items.length ? `<div class="tl">${items.map((m) => `<div class="ev" style="--c:${m.c}" ${m.act}><div class="ic"><span>${ico(m.ic)}</span></div><div class="body"><div class="yr">${esc(m.when)}</div><div class="t">${esc(m.title)}</div>${m.desc ? `<div class="d">${esc(m.desc)}</div>` : ""}</div></div>`).join("")}</div>` : `<div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays.</div>`}
+    <button class="btn" data-act="momentAdd">+ Add a moment (rough date is fine)</button>
+    <div class="sub">Medicine starts, changes and stops appear here automatically from the Meds tab. Flares you mark on Today too.</div></div>`;
+}
+function profileEdit() {
+  const p = data.profile;
+  openSheet(`${sheetHead("About my colitis")}
+  <label class="f"><span>Diagnosed (year)</span><input id="pDiag" inputmode="numeric" maxlength="4" value="${esc(p.diagYear || "")}" placeholder="e.g. 2011"></label>
+  <div class="f"><span>Extent now</span>${segHtml("pNow", EXTENT, p.extentNow)}</div>
+  <div class="f"><span>Furthest it has ever reached</span>${segHtml("pMax", EXTENT, p.extentMax)}</div>
+  <div class="f"><span>Other symptoms I've ever had</span><div class="tags" id="pSym">${[...EXTRA, ["liver", "Liver (e.g. PSC)"]].map(([k, l]) => `<button type="button" aria-pressed="${(p.symptomsEver || []).includes(l)}" data-l="${esc(l)}">${ico(k)}${l}</button>`).join("")}</div></div>
+  <div class="sub">Colonoscopies, medicines that failed and steroid courses fill in automatically.</div>
+  <button class="btn primary" data-act="profileSave">Save</button>`);
+}
+document.addEventListener("click", (e) => { const b = e.target.closest("#pSym button"); if (b) b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") !== "true"); });
+function profileSave() {
+  const y = $("#pDiag").value.trim();
+  if (y && !/^(19|20)\d\d$/.test(y)) { toast("Year should look like 2011"); return; }
+  data.profile = stamp({ diagYear: y, extentNow: segVal("pNow"), extentMax: segVal("pMax"), symptomsEver: $$("#pSym button[aria-pressed=true]").map((b) => b.dataset.l) });
+  save("Saved"); closeSheet(); render();
+}
+function momentForm(m, type) {
+  type = m ? m.type : type || "colonoscopy";
+  const d = m?.details || {};
+  const panes = {
+    colonoscopy: `<div class="f"><span>What did it show?</span>${segHtml("cRes", RESULT, d.result)}</div><div class="f"><span>How far it reached</span>${segHtml("cExt", EXTENT, d.extent)}</div><div class="f"><span>Polyps or dysplasia?</span>${segHtml("cPol", ["None", "Polyps", "Dysplasia"], d.polyps)}</div><label class="f"><span>Biopsy result (optional)</span><input id="cBio" value="${esc(d.biopsy || "")}" placeholder="e.g. mild chronic inflammation"></label><label class="f"><span>Next one due (optional)</span><input id="cNext" value="${esc(d.nextDue || "")}" placeholder="e.g. 2027"></label>`,
+    flare: `<div class="f"><span>Ended</span>${roughInput("fEnd", d.end, { blank: "Still going" })}</div><div class="f"><span>How bad</span>${segHtml("fSev", SEV, d.sev || "Moderate")}</div>`,
+    hospital: `<label class="f"><span>How many days?</span><input id="hDays" inputmode="numeric" value="${esc(d.days || "")}" placeholder="e.g. 5"></label>`,
+    surgery: `<label class="f"><span>What surgery?</span><input id="sWhat" value="${esc(d.what || "")}" placeholder="e.g. colectomy"></label>`,
+    diagnosis: `<div class="f"><span>Which type?</span>${segHtml("dExt", EXTENT, d.extent)}</div>`,
+    other: `<label class="f"><span>Title</span><input id="oTitle" value="${esc(d.title || "")}" placeholder="e.g. Iron infusion"></label>`,
+  };
+  openSheet(`${sheetHead(m ? "Edit moment" : "Add a moment")}
+  ${m ? "" : `<div class="label">What happened?</div><div class="addgrid" style="grid-template-columns:repeat(3,1fr)" id="mtGrid">${MTYPES.map(([k, l, ic]) => `<button type="button" data-mt="${k}" style="${k === type ? "border-color:var(--accent);background:var(--accent-soft)" : ""}">${S("0 0 24 24", I[ic], stroke)}<b>${l}</b></button>`).join("")}</div>`}
+  <div class="f" style="gap:10px" id="mtPane">${panes[type]}</div>
+  <div class="f"><span>${type === "flare" ? "Started" : "When"}</span>${roughInput("mWhen", m?.when)}</div>
+  <label class="f"><span>Note (optional)</span><input id="mNoteIn" value="${esc(m?.note || "")}" placeholder="e.g. doctor's comments, where it was done"></label>
+  <button class="btn primary" data-act="momentSave" data-id="${m?.id || ""}" data-type="${type}">${m ? "Save" : "Add to history"}</button>
+  ${m ? `<button class="btn danger" data-act="momentDelete" data-id="${m.id}">Delete this moment</button>` : ""}`);
+}
+function momentSave(id, type) {
+  const when = readRough("mWhen");
+  if (!when) { toast(type === "flare" ? "Add at least the year it started" : "Add at least the year"); return; }
+  if (type === "flare") {
+    const end = readRough("fEnd");
+    let f = id && data.flares.find((x) => x.id === id); if (!f) { f = { id: uid() }; data.flares.push(f); }
+    const keep = (old, nu) => (old && nu && old.slice(0, nu.length) === nu ? old : nu);
+    Object.assign(f, { start: keep(f.start, when), end: end ? keep(f.end, end) : null, sev: segVal("fSev"), note: $("#mNoteIn").value.trim() }); stamp(f);
+  } else {
+    const det = { colonoscopy: () => ({ result: segVal("cRes"), extent: segVal("cExt"), polyps: segVal("cPol"), biopsy: $("#cBio").value.trim(), nextDue: $("#cNext").value.trim() }), hospital: () => ({ days: $("#hDays").value.trim() }), surgery: () => ({ what: $("#sWhat").value.trim() }), diagnosis: () => ({ extent: segVal("dExt") }), other: () => ({ title: $("#oTitle").value.trim() }) }[type]();
+    let m = id && data.moments.find((x) => x.id === id); if (!m) { m = { id: uid(), type }; data.moments.push(m); }
+    Object.assign(m, { when, details: det, note: $("#mNoteIn").value.trim() }); stamp(m);
+    if (type === "diagnosis" && !data.profile.diagYear) { data.profile.diagYear = when.slice(0, 4); if (det.extent && !data.profile.extentNow) data.profile.extentNow = det.extent; }
+  }
+  save(id ? "Saved" : "Added to your history"); closeSheet(); render();
+}
+function flareForm(f) {
+  momentForm({ id: f.id, type: "flare", when: f.start, details: { end: f.end, sev: f.sev }, note: f.note }, "flare");
+  const b = $('#sheet [data-act="momentDelete"]'); if (b) { b.dataset.act = "flareDelete"; b.textContent = "Delete this flare"; }
+}

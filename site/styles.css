@@ -367,12 +367,12 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .bdd button{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:5px 10px;font-size:12.5px;color:var(--fg)}
 
 /* each tab has its own accent colour (Today keeps teal) */
-:root[data-tab="trends"]{--accent:#2f67ad;--accent-soft:#dde8f6}
-:root[data-tab="meds"]{--accent:#6a4bb0;--accent-soft:#ebe4f7}
-:root[data-tab="history"]{--accent:#97366f;--accent-soft:#f5e0ec}
-:root[data-tab="doctor"]{--accent:#3d4f6b;--accent-soft:#e1e7f0}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"])[data-tab="trends"]{--accent:#7aaaf0;--accent-soft:#18293d}:root:not([data-theme="light"])[data-tab="meds"]{--accent:#b59af0;--accent-soft:#272040}:root:not([data-theme="light"])[data-tab="history"]{--accent:#e58cbf;--accent-soft:#381d2c}:root:not([data-theme="light"])[data-tab="doctor"]{--accent:#a3b6d6;--accent-soft:#1d2532}}
-:root[data-theme="dark"][data-tab="trends"]{--accent:#7aaaf0;--accent-soft:#18293d}:root[data-theme="dark"][data-tab="meds"]{--accent:#b59af0;--accent-soft:#272040}:root[data-theme="dark"][data-tab="history"]{--accent:#e58cbf;--accent-soft:#381d2c}:root[data-theme="dark"][data-tab="doctor"]{--accent:#a3b6d6;--accent-soft:#1d2532}
+:root[data-page="trends"]{--accent:#2f67ad;--accent-soft:#dde8f6}
+:root[data-page="meds"]{--accent:#6a4bb0;--accent-soft:#ebe4f7}
+:root[data-page="history"]{--accent:#97366f;--accent-soft:#f5e0ec}
+:root[data-page="doctor"]{--accent:#3d4f6b;--accent-soft:#e1e7f0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"])[data-page="trends"]{--accent:#7aaaf0;--accent-soft:#18293d}:root:not([data-theme="light"])[data-page="meds"]{--accent:#b59af0;--accent-soft:#272040}:root:not([data-theme="light"])[data-page="history"]{--accent:#e58cbf;--accent-soft:#381d2c}:root:not([data-theme="light"])[data-page="doctor"]{--accent:#a3b6d6;--accent-soft:#1d2532}}
+:root[data-theme="dark"][data-page="trends"]{--accent:#7aaaf0;--accent-soft:#18293d}:root[data-theme="dark"][data-page="meds"]{--accent:#b59af0;--accent-soft:#272040}:root[data-theme="dark"][data-page="history"]{--accent:#e58cbf;--accent-soft:#381d2c}:root[data-theme="dark"][data-page="doctor"]{--accent:#a3b6d6;--accent-soft:#1d2532}
 .card.now{gap:4px;padding:12px 14px}
 .now .medtap{grid-template-columns:26px 1fr;padding:6px 0 0;gap:8px}
 .now .medtap>svg{width:26px;height:26px}

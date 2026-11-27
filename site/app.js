@@ -188,7 +188,7 @@ function renderNav() {
 }
 function render() {
   if (!TITLES[tab]) tab = "today";
-  renderNav(); document.documentElement.dataset.tab = tab;
+  renderNav(); document.documentElement.dataset.page = tab;
   $("#ttl").textContent = TITLES[tab];
   $("#hsub").textContent = fmtDay(todayIso()).replace(/^(\w+) /, (m, d) => ({ Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" }[d] + " "));
   ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();

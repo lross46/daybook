@@ -34,8 +34,8 @@ function barChart(keys, opts = {}) {
 }
 /* What comes before bad days: for each tag, compare the 2 days after tagged days with the 2 days after untagged days.
    Uses the day score (stools, night, blood, urgency...), leaves out flare days, and only judges a tag used 5+ times. */
-let bdWin = LS.get("gl.bdwin", 3);
-document.addEventListener("click", (e) => { const b = e.target.closest("[data-bdwin]"); if (!b) return; bdWin = +b.dataset.bdwin; LS.set("gl.bdwin", bdWin); renderTrends(); });
+let bdWin = 3;
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-bdwin]"); if (!b) return; bdWin = +b.dataset.bdwin; renderTrends(); });
 function badDays(keys) {
   const ok = (k) => dayLogged(k) && !inFlare(k);
   const after = (k) => { const w = Array.from({ length: bdWin }, (_, i) => addDays(k, i + 1)).filter(ok); return w.length ? Math.max(...w.map((x) => sccai(data.days[x]))) : null; }; /* the worst day in the window */

@@ -2,9 +2,10 @@
 /* ---------- Doctor tab ---------- */
 const PERIODS = [["1 month", 1], ["3 months", 3], ["6 months", 6], ["1 year", 12]];
 const REP_PARTS = [["hist", "Full history"], ["activity", "Colitis activity"], ["meds", "Medicines and steroids"], ["questions", "Questions"], ["days", "Day by day"]];
-let repInc = Object.assign({ hist: true, activity: true, meds: true, questions: true, days: true }, LS.get("gl.rep", {}));
-document.addEventListener("click", (e) => { const b = e.target.closest("[data-rep]"); if (!b) return; repInc[b.dataset.rep] = !repInc[b.dataset.rep]; LS.set("gl.rep", repInc); b.setAttribute("aria-pressed", repInc[b.dataset.rep]); });
-let period = LS.get("gl.period", 3);
+const REP_ALL = () => ({ hist: true, activity: true, meds: true, questions: true, days: true });
+let repInc = REP_ALL();
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-rep]"); if (!b) return; repInc[b.dataset.rep] = !repInc[b.dataset.rep]; b.setAttribute("aria-pressed", repInc[b.dataset.rep]); });
+let period = 3;
 function periodRange(months = period) {
   const end = todayIso(), d = parseIso(end); d.setMonth(d.getMonth() - months); d.setDate(d.getDate() + 1);
   const start = iso(d), keys = []; for (let k = start; k <= end; k = addDays(k, 1)) keys.push(k);

@@ -86,7 +86,7 @@ document.addEventListener("click", (e) => {
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareView(x); return; }
   const qd = e.target.closest("[data-qdel]"); if (qd) { e.preventDefault(); const q = byId(data.questions, qd.dataset.qdel); if (q) { q.del = true; stamp(q); save(); renderDoctor(); } return; }
   const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", b === zm); drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; return; }
-  const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }
+  const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; renderDoctor(); return; }
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeOrBack(); });
 
@@ -99,10 +99,11 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
-  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; trEnd = null; tlEnd = null; tPeriod = 3; tlZ = 4; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
+  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; trEnd = null; tlEnd = null; tPeriod = 3; tlZ = 4; bdWin = 3; chartShow = SHOW_ALL(); repInc = REP_ALL(); period = 3; calMonth = todayIso().slice(0, 7); closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
 });
 
 /* ---------- start ---------- */
+for (const k of ["gl.bdwin", "gl.show", "gl.rep", "gl.period", "gl.zoom", "gl.tlz", "gl.tperiod", "gl.tab", "gl.where"]) LS.del(k);
 render();
 setSync(connected() ? (dirty ? "ok" : "ok") : "off");
 if (connected()) sync();

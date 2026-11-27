@@ -410,8 +410,8 @@ function barChart(keys, opts = {}) {
 }
 /* What comes before bad days: for each tag, compare the 2 days after tagged days with the 2 days after untagged days.
    Uses the day score (stools, night, blood, urgency...), leaves out flare days, and only judges a tag used 5+ times. */
-let bdWin = LS.get("gl.bdwin", 3);
-document.addEventListener("click", (e) => { const b = e.target.closest("[data-bdwin]"); if (!b) return; bdWin = +b.dataset.bdwin; LS.set("gl.bdwin", bdWin); renderTrends(); });
+let bdWin = 3;
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-bdwin]"); if (!b) return; bdWin = +b.dataset.bdwin; renderTrends(); });
 function badDays(keys) {
   const ok = (k) => dayLogged(k) && !inFlare(k);
   const after = (k) => { const w = Array.from({ length: bdWin }, (_, i) => addDays(k, i + 1)).filter(ok); return w.length ? Math.max(...w.map((x) => sccai(data.days[x]))) : null; }; /* the worst day in the window */
@@ -912,7 +912,8 @@ function flareView(f) {
 }
 /* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
 const LAYERS = [["meds", "Medicines", `<i style="background:var(--med1);height:6px;border-radius:3px;width:14px"></i>`], ["flares", "Flares", `<i style="background:var(--mod);opacity:.45"></i>`], ["scope", "Colonoscopy", "◆"], ["hosp", "Hospital / surgery", `<b style="color:var(--sev)">✚</b>`]];
-let chartShow = Object.assign({ meds: true, flares: true, scope: true, hosp: true }, LS.get("gl.show", {}));
+const SHOW_ALL = () => ({ meds: true, flares: true, scope: true, hosp: true });
+let chartShow = SHOW_ALL();
 function timelineCard() {
   return `<div class="card"><button class="about fold" data-act="listToggle" data-fold="tlBody" aria-expanded="false"><span class="grow"><b>Timeline</b><span class="sub">Medicines, flares, colonoscopies and hospital stays on one chart</span></span><span class="chev" aria-hidden="true">›</span></button>
     <div id="tlBody" hidden style="display:flex;flex-direction:column;gap:10px">
@@ -924,7 +925,7 @@ function timelineCard() {
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-layer]"); if (!b) return;
-  chartShow[b.dataset.layer] = !chartShow[b.dataset.layer]; LS.set("gl.show", chartShow);
+  chartShow[b.dataset.layer] = !chartShow[b.dataset.layer];
   b.setAttribute("aria-pressed", chartShow[b.dataset.layer]);
   drawChart();
 });
@@ -999,9 +1000,10 @@ document.addEventListener("click", (e) => { if (Date.now() - tlSwallow < 300 && 
 /* ---------- Doctor tab ---------- */
 const PERIODS = [["1 month", 1], ["3 months", 3], ["6 months", 6], ["1 year", 12]];
 const REP_PARTS = [["hist", "Full history"], ["activity", "Colitis activity"], ["meds", "Medicines and steroids"], ["questions", "Questions"], ["days", "Day by day"]];
-let repInc = Object.assign({ hist: true, activity: true, meds: true, questions: true, days: true }, LS.get("gl.rep", {}));
-document.addEventListener("click", (e) => { const b = e.target.closest("[data-rep]"); if (!b) return; repInc[b.dataset.rep] = !repInc[b.dataset.rep]; LS.set("gl.rep", repInc); b.setAttribute("aria-pressed", repInc[b.dataset.rep]); });
-let period = LS.get("gl.period", 3);
+const REP_ALL = () => ({ hist: true, activity: true, meds: true, questions: true, days: true });
+let repInc = REP_ALL();
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-rep]"); if (!b) return; repInc[b.dataset.rep] = !repInc[b.dataset.rep]; b.setAttribute("aria-pressed", repInc[b.dataset.rep]); });
+let period = 3;
 function periodRange(months = period) {
   const end = todayIso(), d = parseIso(end); d.setMonth(d.getMonth() - months); d.setDate(d.getDate() + 1);
   const start = iso(d), keys = []; for (let k = start; k <= end; k = addDays(k, 1)) keys.push(k);
@@ -1408,7 +1410,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 54</div>
+  <div class="sub">App version 55</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });
@@ -1525,7 +1527,7 @@ document.addEventListener("click", (e) => {
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareView(x); return; }
   const qd = e.target.closest("[data-qdel]"); if (qd) { e.preventDefault(); const q = byId(data.questions, qd.dataset.qdel); if (q) { q.del = true; stamp(q); save(); renderDoctor(); } return; }
   const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", b === zm); drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; return; }
-  const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }
+  const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; renderDoctor(); return; }
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeOrBack(); });
 
@@ -1538,10 +1540,11 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
-  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; trEnd = null; tlEnd = null; tPeriod = 3; tlZ = 4; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
+  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; trEnd = null; tlEnd = null; tPeriod = 3; tlZ = 4; bdWin = 3; chartShow = SHOW_ALL(); repInc = REP_ALL(); period = 3; calMonth = todayIso().slice(0, 7); closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
 });
 
 /* ---------- start ---------- */
+for (const k of ["gl.bdwin", "gl.show", "gl.rep", "gl.period", "gl.zoom", "gl.tlz", "gl.tperiod", "gl.tab", "gl.where"]) LS.del(k);
 render();
 setSync(connected() ? (dirty ? "ok" : "ok") : "off");
 if (connected()) sync();

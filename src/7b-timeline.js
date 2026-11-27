@@ -1,6 +1,7 @@
 /* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
 const LAYERS = [["meds", "Medicines", `<i style="background:var(--med1);height:6px;border-radius:3px;width:14px"></i>`], ["flares", "Flares", `<i style="background:var(--mod);opacity:.45"></i>`], ["scope", "Colonoscopy", "◆"], ["hosp", "Hospital / surgery", `<b style="color:var(--sev)">✚</b>`]];
-let chartShow = Object.assign({ meds: true, flares: true, scope: true, hosp: true }, LS.get("gl.show", {}));
+const SHOW_ALL = () => ({ meds: true, flares: true, scope: true, hosp: true });
+let chartShow = SHOW_ALL();
 function timelineCard() {
   return `<div class="card"><button class="about fold" data-act="listToggle" data-fold="tlBody" aria-expanded="false"><span class="grow"><b>Timeline</b><span class="sub">Medicines, flares, colonoscopies and hospital stays on one chart</span></span><span class="chev" aria-hidden="true">›</span></button>
     <div id="tlBody" hidden style="display:flex;flex-direction:column;gap:10px">
@@ -12,7 +13,7 @@ function timelineCard() {
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-layer]"); if (!b) return;
-  chartShow[b.dataset.layer] = !chartShow[b.dataset.layer]; LS.set("gl.show", chartShow);
+  chartShow[b.dataset.layer] = !chartShow[b.dataset.layer];
   b.setAttribute("aria-pressed", chartShow[b.dataset.layer]);
   drawChart();
 });

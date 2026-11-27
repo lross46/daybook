@@ -296,7 +296,7 @@ function ring(p, c, big, small) {
 }
 function lastNDays(n, end = todayIso()) { const out = []; for (let i = n - 1; i >= 0; i--) out.push(addDays(end, -i)); return out; }
 function barChart(keys, opts = {}) {
-  const W = 360, H = opts.h || 214, L = 22, R = 6, T = 24, B = 38, n = keys.length, bw = (W - L - R) / n;
+  const W = 360, H = opts.h || 210, L = 22, R = 6, T = 24, B = 34, n = keys.length, bw = (W - L - R) / n;
   const vals = keys.map((k) => getDay(k));
   const max = Math.max(6, ...vals.map((d) => (d ? d.stools : 0)));
   const top = Math.ceil(max / 2) * 2, y = (v) => T + (H - T - B) * (1 - v / top);
@@ -310,10 +310,10 @@ function barChart(keys, opts = {}) {
     if (!d) { s += `<rect x="${x}" y="${y(0) - 2}" width="${w}" height="2" fill="var(--line)"/>`; return; }
     const h = Math.max(2, y(0) - y(d.stools));
     s += `<rect x="${x}" y="${y(0) - h}" width="${w}" height="${h}" rx="${Math.min(3, w / 3)}" fill="${SC[lvl(sccai(d))]}"/>`;
-    if (d.blood && bw > 5) s += `<path transform="translate(${x + w / 2 - 4} ${y(0) - h - 13}) scale(.25)" d="${dropPath}" fill="var(--blood)"/>`;
-    /* marks under the bar: red = blood, purple = woke at night */
-    if (d.blood) s += `<rect x="${x}" y="${y(0) + 3}" width="${Math.max(1.5, w)}" height="5" rx="1" fill="var(--blood)"/>`;
-    if (d.night > 0) s += `<rect x="${x}" y="${y(0) + 10}" width="${Math.max(1.5, w)}" height="5" rx="1" fill="var(--med2)"/>`;
+    const ds = Math.min(.25, Math.max(.12, bw / 40)), dw = 40 * ds;
+    if (d.blood) s += `<path transform="translate(${x + w / 2 - dw / 2} ${y(0) - h - dw - 3}) scale(${ds})" d="${dropPath}" fill="var(--blood)"/>`;
+    /* a moon under the bar = woke at night */
+    if (d.night > 0) { const ms = Math.min(.42, Math.max(.2, bw / 24)); s += `<path transform="translate(${x + w / 2 - 12 * ms} ${y(0) + 4}) scale(${ms})" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/>`; }
   });
   const lab = [[keys[0], 0, "start"], [keys[Math.floor(n / 2)], Math.floor(n / 2), "middle"], [keys[n - 1], n - 1, "end"]];
   lab.forEach(([k, i, a]) => s += `<text x="${L + i * bw + bw / 2}" y="${H - 6}" font-size="10" text-anchor="${a}" fill="var(--muted)">${k === todayIso() ? "Today" : parseIso(k).getDate() + " " + MONTHS[parseIso(k).getMonth()]}</text>`);
@@ -347,7 +347,7 @@ function renderTrends() {
   const trig = triggers();
   $("#main").innerHTML = `
   <div class="seg" id="tperiod">${PERIODS.map(([l, m]) => `<button data-tperiod="${m}" aria-pressed="${m === tPeriod}">${l}</button>`).join("")}</div>
-  <div class="card"><div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div>${barChart(keys)}<div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><i style="background:var(--blood)"></i>Blood</span><span><i style="background:var(--med2)"></i>Woke at night</span></div><div class="sub">Bar height = stools that day. Marks under a bar: red = blood, purple = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
+  <div class="card"><div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div>${barChart(keys)}<div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">Bar height = stools that day. Drop on top = blood, moon underneath = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
   <div class="card">${foldHead("calBody", "Calendar", `${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)} · tap a day to open it`)}<div id="calBody" ${foldOpen.calBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px"><div class="row"><div class="daynav"><button data-act="calPrev" aria-label="Previous month">‹</button><div class="name">${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)}</div><button data-act="calNext" aria-label="Next month" ${calMonth >= todayIso().slice(0, 7) ? "disabled" : ""}>›</button></div></div>${calendar(calMonth)}</div></div>
   <div class="card">${foldHead("trigBody", "What comes before bad days", trig && trig.length ? trig.slice(0, 2).map((t) => t[1]).join(", ") + (trig.length > 2 ? " and more" : "") : "Not enough data yet")}<div id="trigBody" ${foldOpen.trigBody ? "" : "hidden"}>${trig === null ? `<div class="sub">Needs at least 10 logged days, and a tag used 3 or more times.</div>` : trig.length === 0 ? `<div class="sub">No tag used often enough yet (3 times or more).</div>` : `<div style="display:flex;flex-direction:column;gap:10px">${trig.map(([k, l, v, c]) => `<div class="trig">${ico(k)}<span>${l}</span><div class="bar"><i style="width:${Math.max(2, Math.min(100, v / 2 * 100))}%;background:${v >= 1 ? "var(--sev)" : v >= .5 ? "var(--mod)" : v > 0 ? "var(--mild)" : "var(--ok)"}"></i></div><b>${v >= 0 ? "+" : ""}${v.toFixed(1)}</b></div>`).join("")}</div><div class="sub">Extra stools the next day, compared with your average. Patterns, not proof.</div>`}</div></div>`;
 }
@@ -358,7 +358,7 @@ function calendar(ym) {
   for (let d = 1; d <= dim; d++) {
     const k = `${ym}-${pad(d)}`, day = getDay(k);
     if (k > t) { h += `<div style="color:var(--line)">${d}</div>`; continue; }
-    h += day ? `<div class="s${lvl(sccai(day))}" data-day="${k}" style="cursor:pointer">${d}${day.blood ? S("0 0 40 40", `<path d="${dropPath}" fill="#fff"/>`, 'class="dr"') : ""}</div>` : `<div class="empty" data-day="${k}" style="cursor:pointer">${d}</div>`;
+    h += day ? `<div class="s${lvl(sccai(day))}" data-day="${k}" style="cursor:pointer">${d}${day.blood ? S("0 0 40 40", `<path d="${dropPath}" fill="#fff"/>`, 'class="dr"') : ""}${day.night > 0 ? S("0 0 24 24", `<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="#fff"/>`, 'class="mn"') : ""}</div>` : `<div class="empty" data-day="${k}" style="cursor:pointer">${d}</div>`;
   }
   return `<div class="cal">${h}</div>`;
 }

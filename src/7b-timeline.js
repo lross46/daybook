@@ -1,0 +1,7 @@
+/* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
+function renderTimeline() {
+  const chart = medGantt(360, medZoom);
+  if (!chart) { $("#main").innerHTML = `<div class="card"><div class="label">Nothing to show yet</div><p class="sub" style="margin:0;font-size:14px">Add medicines in Meds and flares, colonoscopies or hospital stays in History, and they appear here on one timeline.</p></div>`; return; }
+  $("#main").innerHTML = `<div class="card"><div class="label">Medicines, flares and key moments</div><div class="seg" id="zoomSeg" style="margin:2px 0 4px">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div><div style="position:relative"><div class="wide" id="ganttBox">${chart}</div>${medGantt.names.map((n) => `<svg class="gname" style="top:${n.y}px" height="16" width="300"><text x="4" y="12" font-size="11" font-weight="600" fill="var(--fg)" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">${n.label}</text></svg>`).join("")}</div>${medZoom ? `<div class="sub">Swipe the chart sideways to go back in time.</div>` : ""}${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:var(--mod);opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span><b style="color:var(--sev)">✚</b> Hospital stay / surgery</span></div>` : ""}</div>`;
+  const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth;
+}

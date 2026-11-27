@@ -87,3 +87,4 @@ I.doc='<path d="M7 3h7l5 5v13H7zM14 3v5h5M10 17v-3M13 17v-5M16 17v-2"/>';
 const syringe=(c)=>S('0 0 58 32',`<rect x="14" y="11" width="26" height="10" rx="2" fill="${c}"/><path d="M40 16h10M6 11v10M10 16h4M50 13v6" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/><path d="M18 14h10" stroke="#fff" stroke-width="2" opacity=".7"/>`,'class="cap"');
 const dripbag=(c)=>S('0 0 58 32',`<rect x="20" y="2" width="18" height="20" rx="4" fill="${c}"/><path d="M29 22v8M25 9h8" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/><path d="M25 9h8" stroke="#fff" stroke-width="2"/>`,'class="cap"');
 const medIcon=(m,c)=>({Rectal:bullet,Injection:syringe,Drip:dripbag}[m.form]||(/vitamin|iron|folic/i.test(m.name)?tablet:capsule))(c);
+I.gantt='<path d="M4 6h9M8 12h12M4 18h7"/>';

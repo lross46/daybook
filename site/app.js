@@ -175,10 +175,11 @@ I.doc='<path d="M7 3h7l5 5v13H7zM14 3v5h5M10 17v-3M13 17v-5M16 17v-2"/>';
 const syringe=(c)=>S('0 0 58 32',`<rect x="14" y="11" width="26" height="10" rx="2" fill="${c}"/><path d="M40 16h10M6 11v10M10 16h4M50 13v6" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/><path d="M18 14h10" stroke="#fff" stroke-width="2" opacity=".7"/>`,'class="cap"');
 const dripbag=(c)=>S('0 0 58 32',`<rect x="20" y="2" width="18" height="20" rx="4" fill="${c}"/><path d="M29 22v8M25 9h8" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/><path d="M25 9h8" stroke="#fff" stroke-width="2"/>`,'class="cap"');
 const medIcon=(m,c)=>({Rectal:bullet,Injection:syringe,Drip:dripbag}[m.form]||(/vitamin|iron|folic/i.test(m.name)?tablet:capsule))(c);
+I.gantt='<path d="M4 6h9M8 12h12M4 18h7"/>';
 
 /* ---------- navigation ---------- */
-const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
-const TITLES = { today: "Today", trends: "Trends", meds: "Medicines", history: "My history", doctor: "My IBD team" };
+const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["timeline", "Timeline", I.gantt], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
+const TITLES = { today: "Today", trends: "Trends", meds: "Medicines", timeline: "Timeline", history: "My history", doctor: "My IBD team" };
 let tab = LS.get("gl.tab", "today");
 let viewDay = todayIso();
 function renderNav() {
@@ -189,7 +190,7 @@ function render() {
   renderNav();
   $("#ttl").textContent = TITLES[tab];
   $("#hsub").textContent = fmtDay(todayIso()).replace(/^(\w+) /, (m, d) => ({ Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" }[d] + " "));
-  ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
+  ({ today: renderToday, trends: renderTrends, meds: renderMeds, timeline: renderTimeline, history: renderHistory, doctor: renderDoctor })[tab]();
 }
 function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); }
 
@@ -407,7 +408,8 @@ function steroidCourses() {
 function medGantt(w = 360, ppy = 0) {
   const meds = live(data.meds).filter((m) => m.start);
   medGantt.names = [];
-  if (!meds.length) return "";
+  const anyMoment = live(data.flares).some((f) => f.start) || live(data.moments).some((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
+  if (!meds.length && !anyMoment) return "";
   const names = [...new Set(meds.sort((a, b) => roughSort(a.start) < roughSort(b.start) ? -1 : 1).map((m) => m.name))];
   const flares = live(data.flares).filter((f) => f.start), moms = live(data.moments).filter((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
   const nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
@@ -459,11 +461,10 @@ function renderMeds() {
     ${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}
   </div>
   <button class="btn primary" data-act="medAdd">+ Add medicine</button>
-  ${live(data.meds).length ? `<div class="card"><div class="label">Every medicine${data.profile.diagYear ? " since " + esc(data.profile.diagYear) : ""}</div><div class="seg" id="zoomSeg" style="margin:2px 0 4px">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div><div style="position:relative"><div class="wide" id="ganttBox">${medGantt(360, medZoom)}</div>${medGantt.names.map((n) => `<svg class="gname" style="top:${n.y}px" height="16" width="300"><text x="4" y="12" font-size="11" font-weight="600" fill="var(--fg)" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">${n.label}</text></svg>`).join("")}</div>${medZoom ? `<div class="sub">Swipe the chart sideways to go back in time.</div>` : ""}${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:var(--mod);opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span><b style="color:var(--sev)">✚</b> Hospital stay / surgery</span></div>` : ""}
-    ${past.length ? `<div class="row" style="margin-top:4px"><div class="label">Tried before</div><span class="sub">Tap one to edit</span></div><div>${past.map((m) => `<div class="tr" data-med="${m.id}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stop))}</span></div><div class="sub">${esc(doseText(m))}</div><div class="sub" style="color:var(--fg)">${esc([m.why, m.note].filter(Boolean).join(": ") || "Reason not set")}${isSteroid(m.name) ? " · steroid" : ""}</div></div></div>`).join("")}</div>` : ""}</div>` : ""}
+  ${past.length ? `<div class="card"><div class="row"><div class="label">Tried before</div><span class="sub">Tap one to edit</span></div><div>${past.map((m) => `<div class="tr" data-med="${m.id}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stop))}</span></div><div class="sub">${esc(doseText(m))}</div><div class="sub" style="color:var(--fg)">${esc([m.why, m.note].filter(Boolean).join(": ") || "Reason not set")}${isSteroid(m.name) ? " · steroid" : ""}</div></div></div>`).join("")}</div></div>` : ""}
   <div class="card"><div class="row"><div class="label">Steroid courses</div><span class="sub">counted automatically</span></div>
     <div class="row" style="justify-content:flex-start"><div class="count" style="color:var(--mild)">${st.recent.length}</div><div class="grow sub">in the last 12 months · ${st.all.length} ever${yrs.length ? " (" + yrs.join(", ") + ")" : ""}. Prednisolone, budesonide, hydrocortisone and similar are recognised as steroids.</div></div></div>`;
-  const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth;
+  
 }
 function medForm(m) {
   const now = !m || !m.stop;
@@ -570,12 +571,11 @@ function profileRows() {
   ];
 }
 function renderHistory() {
-  const items = timelineItems(), strip = lifeStrip();
+  const items = timelineItems();
   $("#main").innerHTML = `
   <div class="card"><div class="row"><div class="label">About my colitis</div><button class="btn small" data-act="profileEdit">Edit</button></div>
     <div class="kv">${profileRows().map(([k, t, v, a]) => `<div><span class="ki">${S("0 0 24 24", I[k], stroke)}</span><div style="min-width:0"><div class="sub">${t}${a ? '<span class="auto">auto</span>' : ""}</div><div style="font-weight:500">${esc(v)}</div></div></div>`).join("")}</div>
     <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and the moments below.</div></div>
-  ${strip ? `<div class="card"><div class="label">At a glance</div><div class="wide">${strip}</div><div class="legend"><span><i class="s0" style="opacity:.55"></i>Calm</span><span><i class="s2"></i>Flare</span><span>◆ Colonoscopy</span></div></div>` : ""}
   <div class="card"><div class="label">Key moments</div>
     ${items.length ? `<div class="tl">${items.map((m) => `<div class="ev" style="--c:${m.c}" ${m.act}><div class="ic"><span>${ico(m.ic)}</span></div><div class="body"><div class="yr">${esc(m.when)}</div><div class="t">${esc(m.title)}</div>${m.desc ? `<div class="d">${esc(m.desc)}</div>` : ""}</div></div>`).join("")}</div>` : `<div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays.</div>`}
     <button class="btn" data-act="momentAdd">+ Add a moment (rough date is fine)</button>
@@ -637,6 +637,13 @@ function momentSave(id, type) {
 function flareForm(f) {
   momentForm({ id: f.id, type: "flare", when: f.start, details: { end: f.end, sev: f.sev }, note: f.note }, "flare");
   const b = $('#sheet [data-act="momentDelete"]'); if (b) { b.dataset.act = "flareDelete"; b.textContent = "Delete this flare"; }
+}
+/* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
+function renderTimeline() {
+  const chart = medGantt(360, medZoom);
+  if (!chart) { $("#main").innerHTML = `<div class="card"><div class="label">Nothing to show yet</div><p class="sub" style="margin:0;font-size:14px">Add medicines in Meds and flares, colonoscopies or hospital stays in History, and they appear here on one timeline.</p></div>`; return; }
+  $("#main").innerHTML = `<div class="card"><div class="label">Medicines, flares and key moments</div><div class="seg" id="zoomSeg" style="margin:2px 0 4px">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div><div style="position:relative"><div class="wide" id="ganttBox">${chart}</div>${medGantt.names.map((n) => `<svg class="gname" style="top:${n.y}px" height="16" width="300"><text x="4" y="12" font-size="11" font-weight="600" fill="var(--fg)" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">${n.label}</text></svg>`).join("")}</div>${medZoom ? `<div class="sub">Swipe the chart sideways to go back in time.</div>` : ""}${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:var(--mod);opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span><b style="color:var(--sev)">✚</b> Hospital stay / surgery</span></div>` : ""}</div>`;
+  const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth;
 }
 
 /* ---------- Doctor tab ---------- */
@@ -721,7 +728,6 @@ function reportHtml() {
   const pr = (rows) => `<table>${rows.map(([a, b]) => `<tr><td class="muted" style="width:32%">${a}</td><td>${esc(b)}</td></tr>`).join("")}</table>`;
   const cs = colonoscopies(), fm = failedMeds(), stc = steroidCourses();
   const allMeds = live(data.meds).sort((a, b) => (roughSort(a.start) < roughSort(b.start) ? 1 : -1));
-  const strip = lifeStrip(680).replace(/var\(--ok\)/g, SC_HEX[0]).replace(/var\(--mild\)/g, SC_HEX[1]).replace(/var\(--mod\)/g, SC_HEX[2]).replace(/var\(--sev\)/g, SC_HEX[3]).replace(/var\(--fg\)/g, "#152120").replace(/var\(--muted\)/g, "#6b7a77").replace(/min-width:340px;/, "");
   const gantt = medGantt(680).replace(/var\(--med(\d)\)/g, (m, i) => MED_HEX[i - 1]).replace(/var\(--(ok|mild|mod|sev)\)/g, (m, k) => SC_HEX[["ok", "mild", "mod", "sev"].indexOf(k)]).replace(/var\(--fg\)/g, "#152120").replace(/var\(--muted\)/g, "#6b7a77").replace(/var\(--line\)/g, "#dde5e3").replace(/min-width:340px;/, "");
   const moments = timelineItems().filter((x) => !x.auto);
   const days = r.keys.filter(dayLogged).reverse();
@@ -736,8 +742,7 @@ function reportHtml() {
     ["Medicines that failed", fm.length ? fm.map((m) => `${m.name}: ${m.why.toLowerCase()}${m.note ? ", " + m.note : ""} (${fmtRough(m.stop)})`).join(". ") : "None recorded"],
     ["Steroid courses ever", stc.all.length ? `${stc.all.length} (${stc.all.map((m) => m.name.toLowerCase() + " " + (m.start || "").slice(0, 4)).join(", ")}) · ${stc.recent.length} in the last 12 months` : "None recorded"],
     ["Other symptoms ever", (p.symptomsEver || []).join(", ") || "None recorded"]])}
-  ${strip ? `<h2>At a glance</h2>${strip}<div class="legend"><span><i style="background:${SC_HEX[0]};opacity:.55"></i>Calm</span><span><i style="background:${SC_HEX[2]}"></i>Flare</span><span>◆ Colonoscopy</span></div>` : ""}
-  ${gantt ? `<h2>Medicines over time</h2>${gantt}${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:${SC_HEX[2]};opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span style="color:${SC_HEX[3]}">✚ Hospital stay / surgery</span></div>` : ""}` : ""}
+  ${gantt ? `<h2>Timeline</h2>${gantt}${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:${SC_HEX[2]};opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span style="color:${SC_HEX[3]}">✚ Hospital stay / surgery</span></div>` : ""}` : ""}
   <div class="two"><div><h2>Key moments</h2>${moments.length ? `<table>${moments.map((m) => `<tr><td style="white-space:nowrap">${esc(m.when)}</td><td>${esc(m.title)}${m.desc ? ": " + esc(m.desc) : ""}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}</div>
   <div><h2>Every medicine</h2>${allMeds.length ? `<table><tr><th>Medicine</th><th>Dose</th><th>Dates</th><th>Outcome</th></tr>${allMeds.map((m) => `<tr><td>${esc(m.name)}${isSteroid(m.name) ? " (steroid)" : ""}</td><td>${esc([m.dose, m.freq].filter(Boolean).join(", "))}${(m.changes || []).map((c) => `<br>→ ${esc([c.dose, c.freq].filter(Boolean).join(", "))} from ${esc(fmtRough(c.from))}`).join("")}</td><td>${esc(fmtRough(m.start))} to ${m.stop ? esc(fmtRough(m.stop)) : "now"}</td><td>${m.stop ? esc([m.why, m.note].filter(Boolean).join(": ") || "Stopped") : "Taking"}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}</div></div>
 
@@ -1139,7 +1144,7 @@ document.addEventListener("click", (e) => {
   const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentForm(x); return; }
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareForm(x); return; }
   const qd = e.target.closest("[data-qdel]"); if (qd) { e.preventDefault(); const q = byId(data.questions, qd.dataset.qdel); if (q) { q.del = true; stamp(q); save(); renderDoctor(); } return; }
-  const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); const y = window.scrollY; renderMeds(); window.scrollTo(0, y); return; }
+  const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); const y = window.scrollY; renderTimeline(); window.scrollTo(0, y); return; }
   const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });

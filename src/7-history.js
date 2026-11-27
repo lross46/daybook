@@ -56,12 +56,11 @@ function profileRows() {
   ];
 }
 function renderHistory() {
-  const items = timelineItems(), strip = lifeStrip();
+  const items = timelineItems();
   $("#main").innerHTML = `
   <div class="card"><div class="row"><div class="label">About my colitis</div><button class="btn small" data-act="profileEdit">Edit</button></div>
     <div class="kv">${profileRows().map(([k, t, v, a]) => `<div><span class="ki">${S("0 0 24 24", I[k], stroke)}</span><div style="min-width:0"><div class="sub">${t}${a ? '<span class="auto">auto</span>' : ""}</div><div style="font-weight:500">${esc(v)}</div></div></div>`).join("")}</div>
     <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and the moments below.</div></div>
-  ${strip ? `<div class="card"><div class="label">At a glance</div><div class="wide">${strip}</div><div class="legend"><span><i class="s0" style="opacity:.55"></i>Calm</span><span><i class="s2"></i>Flare</span><span>◆ Colonoscopy</span></div></div>` : ""}
   <div class="card"><div class="label">Key moments</div>
     ${items.length ? `<div class="tl">${items.map((m) => `<div class="ev" style="--c:${m.c}" ${m.act}><div class="ic"><span>${ico(m.ic)}</span></div><div class="body"><div class="yr">${esc(m.when)}</div><div class="t">${esc(m.title)}</div>${m.desc ? `<div class="d">${esc(m.desc)}</div>` : ""}</div></div>`).join("")}</div>` : `<div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays.</div>`}
     <button class="btn" data-act="momentAdd">+ Add a moment (rough date is fine)</button>

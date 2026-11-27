@@ -81,7 +81,6 @@ function reportHtml() {
   const pr = (rows) => `<table>${rows.map(([a, b]) => `<tr><td class="muted" style="width:32%">${a}</td><td>${esc(b)}</td></tr>`).join("")}</table>`;
   const cs = colonoscopies(), fm = failedMeds(), stc = steroidCourses();
   const allMeds = live(data.meds).sort((a, b) => (roughSort(a.start) < roughSort(b.start) ? 1 : -1));
-  const strip = lifeStrip(680).replace(/var\(--ok\)/g, SC_HEX[0]).replace(/var\(--mild\)/g, SC_HEX[1]).replace(/var\(--mod\)/g, SC_HEX[2]).replace(/var\(--sev\)/g, SC_HEX[3]).replace(/var\(--fg\)/g, "#152120").replace(/var\(--muted\)/g, "#6b7a77").replace(/min-width:340px;/, "");
   const gantt = medGantt(680).replace(/var\(--med(\d)\)/g, (m, i) => MED_HEX[i - 1]).replace(/var\(--(ok|mild|mod|sev)\)/g, (m, k) => SC_HEX[["ok", "mild", "mod", "sev"].indexOf(k)]).replace(/var\(--fg\)/g, "#152120").replace(/var\(--muted\)/g, "#6b7a77").replace(/var\(--line\)/g, "#dde5e3").replace(/min-width:340px;/, "");
   const moments = timelineItems().filter((x) => !x.auto);
   const days = r.keys.filter(dayLogged).reverse();
@@ -96,8 +95,7 @@ function reportHtml() {
     ["Medicines that failed", fm.length ? fm.map((m) => `${m.name}: ${m.why.toLowerCase()}${m.note ? ", " + m.note : ""} (${fmtRough(m.stop)})`).join(". ") : "None recorded"],
     ["Steroid courses ever", stc.all.length ? `${stc.all.length} (${stc.all.map((m) => m.name.toLowerCase() + " " + (m.start || "").slice(0, 4)).join(", ")}) · ${stc.recent.length} in the last 12 months` : "None recorded"],
     ["Other symptoms ever", (p.symptomsEver || []).join(", ") || "None recorded"]])}
-  ${strip ? `<h2>At a glance</h2>${strip}<div class="legend"><span><i style="background:${SC_HEX[0]};opacity:.55"></i>Calm</span><span><i style="background:${SC_HEX[2]}"></i>Flare</span><span>◆ Colonoscopy</span></div>` : ""}
-  ${gantt ? `<h2>Medicines over time</h2>${gantt}${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:${SC_HEX[2]};opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span style="color:${SC_HEX[3]}">✚ Hospital stay / surgery</span></div>` : ""}` : ""}
+  ${gantt ? `<h2>Timeline</h2>${gantt}${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:${SC_HEX[2]};opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span style="color:${SC_HEX[3]}">✚ Hospital stay / surgery</span></div>` : ""}` : ""}
   <div class="two"><div><h2>Key moments</h2>${moments.length ? `<table>${moments.map((m) => `<tr><td style="white-space:nowrap">${esc(m.when)}</td><td>${esc(m.title)}${m.desc ? ": " + esc(m.desc) : ""}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}</div>
   <div><h2>Every medicine</h2>${allMeds.length ? `<table><tr><th>Medicine</th><th>Dose</th><th>Dates</th><th>Outcome</th></tr>${allMeds.map((m) => `<tr><td>${esc(m.name)}${isSteroid(m.name) ? " (steroid)" : ""}</td><td>${esc([m.dose, m.freq].filter(Boolean).join(", "))}${(m.changes || []).map((c) => `<br>→ ${esc([c.dose, c.freq].filter(Boolean).join(", "))} from ${esc(fmtRough(c.from))}`).join("")}</td><td>${esc(fmtRough(m.start))} to ${m.stop ? esc(fmtRough(m.stop)) : "now"}</td><td>${m.stop ? esc([m.why, m.note].filter(Boolean).join(": ") || "Stopped") : "Taking"}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}</div></div>
 

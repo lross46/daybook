@@ -343,3 +343,9 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .fold{padding:0;background:none}
 .fold .chev{transition:transform .15s}
 #evList .tr:first-child{margin-top:8px}
+.layers button{display:inline-flex;align-items:center;gap:5px}
+.layers button i{display:inline-block;width:10px;height:10px;border-radius:3px}
+.layers button[aria-pressed="false"]{opacity:.55;text-decoration:line-through}
+.layers button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)}
+#evList>.chips{margin:10px 0 6px}
+[data-fscope] .chips.layers{flex-wrap:wrap}

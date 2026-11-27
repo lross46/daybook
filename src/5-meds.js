@@ -47,7 +47,7 @@ function steroidCourses() {
   return { all: list, recent };
 }
 /* ppy = pixels per year: 0 fits everything in w; bigger values make a wider chart that scrolls sideways */
-function medGantt(w = 360, ppy = 0) {
+function medGantt(w = 360, ppy = 0, show = null) {
   const meds = live(data.meds).filter((m) => m.start);
   medGantt.names = [];
   const anyMoment = live(data.flares).some((f) => f.start) || live(data.moments).some((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
@@ -55,6 +55,8 @@ function medGantt(w = 360, ppy = 0) {
   const names = [...new Set(meds.sort((a, b) => roughSort(a.start) < roughSort(b.start) ? -1 : 1).map((m) => m.name))];
   const flares = live(data.flares).filter((f) => f.start), moms = live(data.moments).filter((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
   const nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
+  /* layers switched off on the History chart */
+  if (show) { if (!show.meds) names.length = 0; if (!show.flares) flares.length = 0; for (let k = moms.length - 1; k >= 0; k--) if (!show[moms[k].type === "colonoscopy" ? "scope" : "hosp"]) moms.splice(k, 1); }
   const L = 8, R = 8;
   if (ppy) w = Math.max(w, Math.round((y1 - y0) * ppy) + L + R);
   const months = ppy >= 150, top = flares.length || moms.length ? 24 : 0, foot = months ? 34 : 22;

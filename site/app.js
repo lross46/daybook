@@ -406,7 +406,7 @@ function steroidCourses() {
   return { all: list, recent };
 }
 /* ppy = pixels per year: 0 fits everything in w; bigger values make a wider chart that scrolls sideways */
-function medGantt(w = 360, ppy = 0) {
+function medGantt(w = 360, ppy = 0, show = null) {
   const meds = live(data.meds).filter((m) => m.start);
   medGantt.names = [];
   const anyMoment = live(data.flares).some((f) => f.start) || live(data.moments).some((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
@@ -414,6 +414,8 @@ function medGantt(w = 360, ppy = 0) {
   const names = [...new Set(meds.sort((a, b) => roughSort(a.start) < roughSort(b.start) ? -1 : 1).map((m) => m.name))];
   const flares = live(data.flares).filter((f) => f.start), moms = live(data.moments).filter((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
   const nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
+  /* layers switched off on the History chart */
+  if (show) { if (!show.meds) names.length = 0; if (!show.flares) flares.length = 0; for (let k = moms.length - 1; k >= 0; k--) if (!show[moms[k].type === "colonoscopy" ? "scope" : "hosp"]) moms.splice(k, 1); }
   const L = 8, R = 8;
   if (ppy) w = Math.max(w, Math.round((y1 - y0) * ppy) + L + R);
   const months = ppy >= 150, top = flares.length || moms.length ? 24 : 0, foot = months ? 34 : 22;
@@ -613,12 +615,11 @@ function renderHistory() {
   const sum = [p.diagYear && `Diagnosed ${p.diagYear}`, p.extentNow && p.extentNow.toLowerCase(), st && `${st} steroid course${st > 1 ? "s" : ""}`].filter(Boolean).join(" · ") || "Tap to add your diagnosis and extent";
   $("#main").innerHTML = `<div data-fscope style="display:contents">
   <button class="btn primary" data-act="momentAdd">+ Add an event</button>
+  ${items.length ? findBox("Search medicines, flares, tests") : ""}
   <button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button>
   ${items.length ? `${timelineCard()}
-  <div class="card">${findBox("Search medicines, flares, tests")}${findChips()}
-    <button class="listtog" data-act="listToggle" aria-expanded="false">Show all events (${items.length}) <span aria-hidden="true">▾</span></button>
-    <div id="evList" hidden>${eventList(items)}</div></div>` : `<div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
-  if (items.length) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
+  <div class="card"><button class="about fold" data-act="listToggle" data-fold="evList" aria-expanded="false"><span class="grow"><b>All events (${items.length})</b><span class="sub">Newest first, grouped by year</span></span><span class="chev" aria-hidden="true">›</span></button>
+    <div id="evList" hidden>${findChips()}${eventList(items)}</div></div>` : `<div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
 }
 function aboutOpen() {
   openSheet(`${sheetHead("About my colitis")}
@@ -626,12 +627,13 @@ function aboutOpen() {
     <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and your events.</div>
     <button class="btn primary" data-act="profileEdit">Edit</button>`);
 }
+/* open or close a folded section: the button names its section with data-fold (default: the list) */
 function listToggle(el, open) {
-  const l = $("#evList"); if (!l) return;
+  const id = el?.dataset.fold || "evList", l = $("#" + id); if (!l) return;
   l.hidden = open === undefined ? !l.hidden : !open;
-  const b = el || $('[data-act="listToggle"]'); b.setAttribute("aria-expanded", !l.hidden);
-  if (b.classList.contains("fold")) { b.querySelector(".chev").style.transform = l.hidden ? "" : "rotate(90deg)"; return; }
-  b.firstChild.textContent = l.hidden ? `Show all events (${$$("#evList [data-fi]").length}) ` : "Hide the list ";
+  const b = el || $(`[data-act="listToggle"][data-fold="${id}"]`) || $('[data-act="listToggle"]:not([data-fold])');
+  if (b) { b.setAttribute("aria-expanded", !l.hidden); const c = b.querySelector(".chev"); if (c) c.style.transform = l.hidden ? "" : "rotate(90deg)"; }
+  if (id === "tlBody" && !l.hidden) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
 }
 function profileEdit() {
   const p = data.profile;
@@ -691,22 +693,32 @@ function flareForm(f) {
   const b = $('#sheet [data-act="momentDelete"]'); if (b) { b.dataset.act = "flareDelete"; b.textContent = "Delete this flare"; }
 }
 /* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
+const LAYERS = [["meds", "Medicines", `<i style="background:var(--med1);height:6px;border-radius:3px;width:14px"></i>`], ["flares", "Flares", `<i style="background:var(--mod);opacity:.45"></i>`], ["scope", "Colonoscopy", "◆"], ["hosp", "Hospital / surgery", `<b style="color:var(--sev)">✚</b>`]];
+let chartShow = Object.assign({ meds: true, flares: true, scope: true, hosp: true }, LS.get("gl.show", {}));
 function timelineCard() {
-  return `<div class="card"><div class="seg" id="zoomSeg" style="grid-template-columns:repeat(3,1fr)">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div>
+  return `<div class="card"><button class="about fold" data-act="listToggle" data-fold="tlBody" aria-expanded="false"><span class="grow"><b>Timeline</b><span class="sub">Medicines, flares, colonoscopies and hospital stays on one chart</span></span><span class="chev" aria-hidden="true">›</span></button>
+    <div id="tlBody" hidden style="display:flex;flex-direction:column;gap:10px">
+    <div class="seg" id="zoomSeg" style="grid-template-columns:repeat(3,1fr)">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div>
+    <div class="chips layers" role="group" aria-label="Show on the chart">${LAYERS.map(([k, l, sw]) => `<button type="button" data-layer="${k}" aria-pressed="${chartShow[k]}">${sw} ${l}</button>`).join("")}</div>
     <div id="chartWrap"></div>
-    <div class="legend"><span><i style="background:var(--mod);opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span><b style="color:var(--sev)">✚</b> Hospital / surgery</span></div>
-    <div class="sub">Tap a bar or mark to open it.</div></div>`;
+    <div class="sub">Tap a bar or mark to open it. Tap the buttons above to show or hide things.</div></div></div>`;
 }
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-layer]"); if (!b) return;
+  chartShow[b.dataset.layer] = !chartShow[b.dataset.layer]; LS.set("gl.show", chartShow);
+  b.setAttribute("aria-pressed", chartShow[b.dataset.layer]);
+  const gb = $("#ganttBox"), left = gb ? gb.scrollLeft : 0; drawChart(); if ($("#ganttBox")) $("#ganttBox").scrollLeft = left;
+});
 function drawChart() {
   const w = $("#chartWrap"); if (!w) return;
-  const chart = medGantt(360, medZoom), sc = medGantt.sc, years = [];
+  const chart = medGantt(360, medZoom, chartShow), sc = medGantt.sc, years = [];
   for (let y = Math.ceil(sc.y1) - 1; y >= Math.floor(sc.y0); y--) years.push(y);
-  w.innerHTML = `<div class="jump" aria-label="Go to year">${years.map((y) => `<button type="button" data-jump="${y}">${y}</button>`).join("")}</div>
+  w.innerHTML = `${medZoom ? `<div class="jump" aria-label="Go to year">${years.map((y) => `<button type="button" data-jump="${y}">${y}</button>`).join("")}</div>` : ""}
     <div style="position:relative"><div class="wide" id="ganttBox">${chart}</div>${medGantt.names.map((n) => `<svg class="gname" style="top:${n.y}px" height="16" width="300"><text x="4" y="12" font-size="11" font-weight="600" fill="var(--fg)" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">${n.label}</text></svg>`).join("")}</div>`;
 }
 /* scroll the chart so the year sits near the left edge; zoom in first if the whole history is showing */
 function jumpTo(y, soft) {
-  if (!medZoom) { if (soft) return; medZoom = 70; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", +b.dataset.zoom === medZoom); drawChart(); }
+  if (!medZoom || $("#tlBody")?.hidden) { if (soft) return; medZoom = 70; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", +b.dataset.zoom === medZoom); drawChart(); }
   const gb = $("#ganttBox"); if (!gb) return;
   gb.scrollTo({ left: Math.max(0, medGantt.sc.x(y) - 30), behavior: "smooth" });
   for (const b of $$("[data-jump]")) b.setAttribute("aria-pressed", +b.dataset.jump === y);

@@ -89,12 +89,11 @@ function renderHistory() {
   const sum = [p.diagYear && `Diagnosed ${p.diagYear}`, p.extentNow && p.extentNow.toLowerCase(), st && `${st} steroid course${st > 1 ? "s" : ""}`].filter(Boolean).join(" · ") || "Tap to add your diagnosis and extent";
   $("#main").innerHTML = `<div data-fscope style="display:contents">
   <button class="btn primary" data-act="momentAdd">+ Add an event</button>
+  ${items.length ? findBox("Search medicines, flares, tests") : ""}
   <button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button>
   ${items.length ? `${timelineCard()}
-  <div class="card">${findBox("Search medicines, flares, tests")}${findChips()}
-    <button class="listtog" data-act="listToggle" aria-expanded="false">Show all events (${items.length}) <span aria-hidden="true">▾</span></button>
-    <div id="evList" hidden>${eventList(items)}</div></div>` : `<div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
-  if (items.length) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
+  <div class="card"><button class="about fold" data-act="listToggle" data-fold="evList" aria-expanded="false"><span class="grow"><b>All events (${items.length})</b><span class="sub">Newest first, grouped by year</span></span><span class="chev" aria-hidden="true">›</span></button>
+    <div id="evList" hidden>${findChips()}${eventList(items)}</div></div>` : `<div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
 }
 function aboutOpen() {
   openSheet(`${sheetHead("About my colitis")}
@@ -102,12 +101,13 @@ function aboutOpen() {
     <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and your events.</div>
     <button class="btn primary" data-act="profileEdit">Edit</button>`);
 }
+/* open or close a folded section: the button names its section with data-fold (default: the list) */
 function listToggle(el, open) {
-  const l = $("#evList"); if (!l) return;
+  const id = el?.dataset.fold || "evList", l = $("#" + id); if (!l) return;
   l.hidden = open === undefined ? !l.hidden : !open;
-  const b = el || $('[data-act="listToggle"]'); b.setAttribute("aria-expanded", !l.hidden);
-  if (b.classList.contains("fold")) { b.querySelector(".chev").style.transform = l.hidden ? "" : "rotate(90deg)"; return; }
-  b.firstChild.textContent = l.hidden ? `Show all events (${$$("#evList [data-fi]").length}) ` : "Hide the list ";
+  const b = el || $(`[data-act="listToggle"][data-fold="${id}"]`) || $('[data-act="listToggle"]:not([data-fold])');
+  if (b) { b.setAttribute("aria-expanded", !l.hidden); const c = b.querySelector(".chev"); if (c) c.style.transform = l.hidden ? "" : "rotate(90deg)"; }
+  if (id === "tlBody" && !l.hidden) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
 }
 function profileEdit() {
   const p = data.profile;

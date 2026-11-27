@@ -13,7 +13,7 @@ function confirmTap(el) {
   setTimeout(() => { if (el.isConnected) { delete el.dataset.armed; el.innerHTML = el._txt; } }, 3500);
   return false;
 }
-const NEEDS_CONFIRM = new Set(["medDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
+const NEEDS_CONFIRM = new Set(["visitDel", "medDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
 const ACTS = {
   close: () => closeOrBack(),
   settings: () => settingsSheet(),
@@ -30,6 +30,8 @@ const ACTS = {
   openNote: (el) => { const t = $(`textarea[data-note="${el.dataset.key}"]`); el.remove(); t.hidden = false; t.focus(); },
   flareStart: () => { if (openFlare()) return; data.flares.push(stamp({ id: uid(), start: viewDay, end: null, sev: "Moderate", note: "" })); save("Flare started. Day 1"); render(); },
   flareEnd: () => { const f = openFlare(); if (!f) return; f.end = viewDay < roughLo(f.start) ? roughLo(f.start) : viewDay; stamp(f); save("Flare ended. Well done"); render(); },
+  visitAdd: () => visitAdd(),
+  visitDel: (el) => visitDel(el.dataset.id),
   clearDay: () => { data.days[viewDay] = { del: true, at: Date.now() }; save("Day cleared"); renderToday(); },
   /* Trends */
   calPrev: () => { const d = parseIso(calMonth + "-01"); d.setMonth(d.getMonth() - 1); calMonth = iso(d).slice(0, 7); renderTrends(); },

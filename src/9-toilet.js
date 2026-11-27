@@ -1,5 +1,6 @@
 /* ---------- Toilet finder (OpenStreetMap via Overpass) ---------- */
 const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+const NEAR_M = 1300;
 function distM(a, b, c, d) {
   const R = 6371e3, r = Math.PI / 180, x = (c - a) * r, y = (d - b) * r;
   const h = Math.sin(x / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(y / 2) ** 2;
@@ -28,16 +29,26 @@ function toiletFail(lat, msg) {
 async function loadToilets(lat, lon) {
   if ($("#sheet").hidden) return;
   toiletSheet(`<div class="ok-note"><span class="spin"></span> Looking for toilets…</div>`);
-  const q = `[out:json][timeout:20];(nwr["amenity"="toilets"](around:1500,${lat},${lon});nwr["toilets"="yes"]["amenity"!="toilets"](around:800,${lat},${lon});nwr["toilets:access"~"customers|yes|public"](around:800,${lat},${lon}););out center 80;`;
-  let j = null; const why = [];
-  for (const url of OVERPASS) {
+  /* a box search is much lighter for the servers than a radius search; distances are worked out here */
+  const dLat = 1.3 / 111, dLon = 1.3 / (111 * Math.cos(lat * Math.PI / 180));
+  const box = [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map((v) => v.toFixed(5)).join(",");
+  const q = `[out:json][timeout:12][bbox:${box}];(node["amenity"="toilets"];way["amenity"="toilets"];node["toilets"="yes"];way["toilets"="yes"];);out center 150;`;
+  const why = [], ctls = [];
+  /* ask all servers at once and take the first good answer */
+  const ask = async (url) => {
+    const ctl = new AbortController(); ctls.push(ctl);
+    const t = setTimeout(() => ctl.abort(), 20000);
     try {
-      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 22000);
       const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ctl.signal, referrerPolicy: "origin" });
-      clearTimeout(t);
-      if (r.ok) { j = await r.json(); break; } why.push(r.status);
-    } catch (e) { why.push(e.name === "AbortError" ? "slow" : "blocked"); }
-  }
+      if (!r.ok) { why.push(r.status); throw new Error(); }
+      const res = await r.json(); if (res.remark && !(res.elements || []).length) { why.push("busy"); throw new Error(); }
+      return res;
+    } catch (e) { if (e.name === "AbortError") why.push("slow"); else if (e.message !== "") why.push("blocked"); throw e; }
+    finally { clearTimeout(t); }
+  };
+  let j = null;
+  try { j = await Promise.any(OVERPASS.map(ask)); } catch {}
+  ctls.forEach((c) => c.abort());
   if ($("#sheet").hidden) return;
   if (!j) return toiletFail(lat, `The toilet map didn't answer (${why.join(", ")}). Try Maps instead.`);
   const seen = new Set(), list = [];
@@ -53,11 +64,11 @@ async function loadToilets(lat, lon) {
     if (t.wheelchair === "yes" || t["toilets:wheelchair"] === "yes") bits.push("accessible");
     if (t.radar_key === "yes" || t["toilets:radar_key"] === "yes" || /radar/i.test(t.description || "")) bits.push("RADAR key");
     if (t.opening_hours) bits.push(t.opening_hours === "24/7" ? "open 24/7" : t.opening_hours);
-    list.push({ la, lo, name, bits, pub, d: distM(lat, lon, la, lo) });
+    const dist = distM(lat, lon, la, lo); if (dist <= NEAR_M) list.push({ la, lo, name, bits, pub, d: dist });
   }
   list.sort((a, b) => (a.d + (a.pub ? 0 : 150)) - (b.d + (b.pub ? 0 : 150)));
   const top = list.slice(0, 15);
   toiletSheet(top.length ? `<div>${top.map((x) => `<a class="tr" href="${mapsWalk(x.la, x.lo, x.name)}" target="_blank" rel="noopener" style="grid-template-columns:1fr auto;text-decoration:none;color:inherit"><div style="min-width:0"><div class="name">${esc(x.name)}</div><div class="sub">${esc(x.bits.join(" · ") || "no details")}</div></div><div style="text-align:right"><div class="name">${fmtDist(x.d)}</div><div class="sub">${walkMin(x.d)} min walk</div></div></a>`).join("")}</div>
     <div class="sub">Tap one for walking directions.</div><a class="btn" href="${mapsSearch(lat, lon)}" target="_blank" rel="noopener">Search in Maps instead</a>`
-    : `<div class="warn">No toilets on the map within 1.5 km.</div><a class="btn primary" href="${mapsSearch(lat, lon)}" target="_blank" rel="noopener">Open in Maps</a>`);
+    : `<div class="warn">No toilets on the map within 1.3 km.</div><a class="btn primary" href="${mapsSearch(lat, lon)}" target="_blank" rel="noopener">Open in Maps</a>`);
 }

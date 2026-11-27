@@ -62,11 +62,11 @@ function medGantt(w = 360, ppy = 0) {
   const gy = H - foot;
   let s = "";
   /* flares as orange bands behind every medicine, colonoscopies and hospital stays as marks on top */
-  for (const f of flares) { const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${gy - 2}" fill="var(--mod)" opacity=".2"/>`; }
+  for (const f of flares) { const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${gy - 2}" fill="var(--mod)" opacity=".2" data-flare="${f.id}"/>`; }
   for (const m of moms) {
     const cx = x(roughYear(m.when));
-    if (m.type === "colonoscopy") s += `<path d="M${cx} 5l6 7-6 7-6-7z" fill="var(--fg)"/>`;
-    else s += `<g transform="translate(${cx - 8} 3)">${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="16" height="16" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
+    if (m.type === "colonoscopy") s += `<path d="M${cx} 5l6 7-6 7-6-7z" fill="var(--fg)" data-moment="${m.id}"/><rect x="${cx - 11}" y="1" width="22" height="22" fill="transparent" data-moment="${m.id}"/>`;
+    else s += `<g transform="translate(${cx - 8} 3)" data-moment="${m.id}"><rect width="16" height="16" fill="transparent"/>${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="16" height="16" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
   }
   const mono = 'font-family="ui-monospace,Menlo,monospace"';
   if (months) {
@@ -89,8 +89,9 @@ function medGantt(w = 360, ppy = 0) {
     /* zoomed in, names are laid over the chart on the left so they stay put while it scrolls */
     if (ppy) medGantt.names.push({ y: yy - 3, label });
     else s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)">${label}</text>`;
-    ms.forEach((m) => { const a = roughYear(m.start), b = m.stopDay ? roughYear(m.stopDay) : m.stop ? roughYear(m.stop) : nowY; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/>`; });
+    ms.forEach((m) => { const a = roughYear(m.start), b = m.stopDay ? roughYear(m.stopDay) : m.stop ? roughYear(m.stop) : nowY; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/><rect x="${x(a)}" y="${yy + 5}" width="${Math.max(16, x(b) - x(a))}" height="24" fill="transparent" data-med="${m.id}"/>`; });
   });
+  medGantt.sc = { x, y0, y1 };
   return S(`0 0 ${w} ${H}`, s, ppy ? `width="${w}" height="${H}" style="display:block;max-width:none"` : `style="width:100%;min-width:340px;height:auto"`);
 }
 const ZOOMS = [["Everything", 0], ["Years", 70], ["Months", 300]];
@@ -98,14 +99,16 @@ let medZoom = LS.get("gl.zoom", 0);
 function renderMeds() {
   const cur = currentMeds(), past = pastMeds(), st = steroidCourses();
   const yrs = st.all.map((m) => (m.start || "").slice(0, 4)).filter(Boolean);
-  $("#main").innerHTML = `
-  <div class="card"><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="sub">Tap one to change or stop it</span>` : ""}</div>
-    ${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}
+  $("#main").innerHTML = `<div data-fscope style="display:contents">
+  ${cur.length + past.length > 3 ? findBox("Search medicines") : ""}
+  <div class="card" data-fgroup><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="sub">Tap one to change or stop it</span>` : ""}</div>
+    ${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.form, m.note, isSteroid(m.name) && "steroid")}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}
   </div>
   <button class="btn primary" data-act="medAdd">+ Add medicine</button>
-  ${past.length ? `<div class="card"><div class="row"><div class="label">Tried before</div><span class="sub">Tap one to edit</span></div><div>${past.map((m) => `<div class="tr" data-med="${m.id}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stop))}</span></div><div class="sub">${esc(doseText(m))}</div><div class="sub" style="color:var(--fg)">${esc([m.why, m.note].filter(Boolean).join(": ") || "Reason not set")}${isSteroid(m.name) ? " · steroid" : ""}</div></div></div>`).join("")}</div></div>` : ""}
+  <div class="empty-note" data-fempty hidden>No medicine matches. Try another word.</div>
+  ${past.length ? `<div class="card" data-fgroup><div class="row"><div class="label">Tried before</div><span class="sub">Tap one to edit</span></div><div>${past.map((m) => `<div class="tr" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.why, m.note, fmtRough(m.start), fmtRough(m.stop), isSteroid(m.name) && "steroid")}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stop))}</span></div><div class="sub">${esc(doseText(m))}</div><div class="sub" style="color:var(--fg)">${esc([m.why, m.note].filter(Boolean).join(": ") || "Reason not set")}${isSteroid(m.name) ? " · steroid" : ""}</div></div></div>`).join("")}</div></div>` : ""}
   <div class="card"><div class="row"><div class="label">Steroid courses</div><span class="sub">counted automatically</span></div>
-    <div class="row" style="justify-content:flex-start"><div class="count" style="color:var(--mild)">${st.recent.length}</div><div class="grow sub">in the last 12 months · ${st.all.length} ever${yrs.length ? " (" + yrs.join(", ") + ")" : ""}. Prednisolone, budesonide, hydrocortisone and similar are recognised as steroids.</div></div></div>`;
+    <div class="row" style="justify-content:flex-start"><div class="count" style="color:var(--mild)">${st.recent.length}</div><div class="grow sub">in the last 12 months · ${st.all.length} ever${yrs.length ? " (" + yrs.join(", ") + ")" : ""}. Prednisolone, budesonide, hydrocortisone and similar are recognised as steroids.</div></div></div></div>`;
   
 }
 function medForm(m) {

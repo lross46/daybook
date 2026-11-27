@@ -16,16 +16,44 @@ function timelineItems() {
     if (m.type === "hospital") desc = d.days ? `${d.days} days` : "";
     if (m.type === "surgery") desc = d.what || "";
     if (m.type === "diagnosis") desc = d.extent || "";
-    out.push({ key: roughSort(m.when), when: fmtRough(m.when), title: m.type === "other" ? d.title || "Other" : m.type === "diagnosis" ? "Diagnosed" : label, desc: [desc, m.note].filter(Boolean).join(". "), ic, c, act: `data-moment="${m.id}"` });
+    out.push({ key: roughSort(m.when), when: fmtRough(m.when), title: m.type === "other" ? d.title || "Other" : m.type === "diagnosis" ? "Diagnosed" : label, desc: [desc, m.note].filter(Boolean).join(". "), ic, c, act: `data-moment="${m.id}"`, g: "tests" });
   }
-  for (const f of live(data.flares)) out.push({ key: roughSort(f.start), when: fmtRough(f.start), title: f.end ? "Flare" : "Flare (ongoing)", desc: [f.sev, f.end ? "until " + fmtRough(f.end) : "", f.note].filter(Boolean).join(" · "), ic: "flag", c: f.sev === "Severe" ? "var(--sev)" : "var(--mod)", act: `data-flare="${f.id}"` });
+  for (const f of live(data.flares)) out.push({ key: roughSort(f.start), when: fmtRough(f.start), title: f.end ? "Flare" : "Flare (ongoing)", desc: [f.sev, f.end ? "until " + fmtRough(f.end) : "", f.note].filter(Boolean).join(" · "), ic: "flag", c: f.sev === "Severe" ? "var(--sev)" : "var(--mod)", act: `data-flare="${f.id}"`, g: "flares" });
   for (const m of live(data.meds)) {
-    out.push({ key: roughSort(m.start), when: fmtRough(m.start), title: `Started ${m.name}`, desc: [m.dose, m.freq].filter(Boolean).join(" · ") + (isSteroid(m.name) ? " · steroid" : ""), ic: "pill", c: medColor(m), act: `data-med="${m.id}"`, auto: 1 });
-    for (const ch of m.changes || []) out.push({ key: roughSort(ch.from), when: fmtRough(ch.from), title: `${m.name} dose changed`, desc: [ch.dose, ch.freq].filter(Boolean).join(" · "), ic: "pill", c: medColor(m), act: `data-med="${m.id}"`, auto: 1 });
-    if (m.stop) out.push({ key: roughSort(m.stopDay || m.stop), when: fmtRough(m.stopDay || m.stop), title: `Stopped ${m.name}`, desc: [m.why, m.note].filter(Boolean).join(": "), ic: "pill", c: medColor(m), act: `data-med="${m.id}"`, auto: 1 });
+    out.push({ key: roughSort(m.start), when: fmtRough(m.start), title: `Started ${m.name}`, desc: [m.dose, m.freq].filter(Boolean).join(" · ") + (isSteroid(m.name) ? " · steroid" : ""), ic: "pill", c: medColor(m), act: `data-med="${m.id}"`, auto: 1, g: "meds" });
+    for (const ch of m.changes || []) out.push({ key: roughSort(ch.from), when: fmtRough(ch.from), title: `${m.name} dose changed`, desc: [ch.dose, ch.freq].filter(Boolean).join(" · "), ic: "pill", c: medColor(m), act: `data-med="${m.id}"`, auto: 1, g: "meds" });
+    if (m.stop) out.push({ key: roughSort(m.stopDay || m.stop), when: fmtRough(m.stopDay || m.stop), title: `Stopped ${m.name}`, desc: [m.why, m.note].filter(Boolean).join(": "), ic: "pill", c: medColor(m), act: `data-med="${m.id}"`, auto: 1, g: "meds" });
   }
   return out.sort((a, b) => (a.key < b.key ? 1 : -1));
 }
+/* ---------- search and filter inside a tab ---------- */
+const FGROUPS = [["all", "All"], ["meds", "Medicines"], ["flares", "Flares"], ["tests", "Tests & hospital"]];
+const findBox = (ph) => `<label class="find">${S("0 0 24 24", I.search, stroke)}<input type="search" data-find placeholder="${ph}" autocomplete="off" enterkeyhint="search" aria-label="${ph}"></label>`;
+const findChips = () => `<div class="chips" role="group" aria-label="Show">${FGROUPS.map(([k, l]) => `<button type="button" data-fgrp="${k}" aria-pressed="${k === "all"}">${l}</button>`).join("")}</div>`;
+const findText = (...parts) => esc(parts.filter(Boolean).join(" ").toLowerCase());
+function eventList(items) {
+  const years = [...new Set(items.map((m) => m.key.slice(0, 4)))];
+  return years.map((y) => `<div data-fgroup><div class="yh">${y === "0000" ? "Date not set" : y}</div><div class="tl">${items.filter((m) => m.key.slice(0, 4) === y).map((m) => `<div class="ev" style="--c:${m.c}" ${m.act} data-g="${m.g}" data-y="${y}" data-fi="${findText(m.when, m.title, m.desc)}"><div class="ic"><span>${ico(m.ic)}</span></div><div class="body"><div class="yr">${esc(m.when)}</div><div class="t">${esc(m.title)}</div>${m.desc ? `<div class="d">${esc(m.desc)}</div>` : ""}</div></div>`).join("")}</div></div>`).join("") + `<div class="empty-note" data-fempty hidden>Nothing matches. Try another word.</div>`;
+}
+function applyFind(scope) {
+  if (!scope) return;
+  const q = (scope.querySelector("[data-find]")?.value || "").trim().toLowerCase();
+  const g = scope.querySelector("[data-fgrp][aria-pressed=true]")?.dataset.fgrp || "all";
+  let first = null, any = false;
+  for (const it of scope.querySelectorAll("[data-fi]")) {
+    const show = (g === "all" || !it.dataset.g || it.dataset.g === g) && (!q || it.dataset.fi.includes(q));
+    it.hidden = !show; if (show) { any = true; first = first || it; }
+  }
+  for (const grp of scope.querySelectorAll("[data-fgroup]")) grp.hidden = !grp.querySelector("[data-fi]:not([hidden])");
+  for (const e of scope.querySelectorAll("[data-fempty]")) e.hidden = any;
+  if (q && first && first.dataset.y && scope.querySelector("#ganttBox")) jumpTo(+first.dataset.y, true);
+}
+document.addEventListener("input", (e) => { if (e.target.matches("[data-find]")) applyFind(e.target.closest("[data-fscope]")); });
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-fgrp]"); if (!b) return;
+  for (const x of b.parentElement.children) x.setAttribute("aria-pressed", x === b);
+  applyFind(b.closest("[data-fscope]"));
+});
 function lifeStrip(w = 360) {
   const t = todayIso(), nowY = roughYear(t);
   const years = [data.profile.diagYear && +data.profile.diagYear, ...live(data.flares).map((f) => roughYear(f.start)), ...live(data.moments).map((m) => roughYear(m.when)), ...live(data.meds).map((m) => roughYear(m.start))].filter(Boolean);
@@ -57,14 +85,13 @@ function profileRows() {
 }
 function renderHistory() {
   const items = timelineItems();
-  $("#main").innerHTML = `
+  $("#main").innerHTML = `<div data-fscope style="display:contents">
   <div class="card"><div class="row"><div class="label">About my colitis</div><button class="btn small" data-act="profileEdit">Edit</button></div>
     <div class="kv">${profileRows().map(([k, t, v, a]) => `<div><span class="ki">${S("0 0 24 24", I[k], stroke)}</span><div style="min-width:0"><div class="sub">${t}${a ? '<span class="auto">auto</span>' : ""}</div><div style="font-weight:500">${esc(v)}</div></div></div>`).join("")}</div>
     <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and the moments below.</div></div>
-  <div class="card"><div class="label">Key moments</div>
-    ${items.length ? `<div class="tl">${items.map((m) => `<div class="ev" style="--c:${m.c}" ${m.act}><div class="ic"><span>${ico(m.ic)}</span></div><div class="body"><div class="yr">${esc(m.when)}</div><div class="t">${esc(m.title)}</div>${m.desc ? `<div class="d">${esc(m.desc)}</div>` : ""}</div></div>`).join("")}</div>` : `<div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays.</div>`}
-    <button class="btn" data-act="momentAdd">+ Add a moment (rough date is fine)</button>
-    <div class="sub">Medicine starts, changes and stops appear here automatically from the Meds tab. Flares you mark on Today too.</div></div>`;
+  <div class="card"><div class="row"><div class="label">Key moments</div><button class="btn small" data-act="momentAdd">+ Add</button></div>
+    ${items.length ? `${findBox("Search history")}${findChips()}${eventList(items)}` : `<div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine.</div>`}
+    <div class="sub">Medicine starts, changes and stops appear here automatically from Meds. Flares you mark on Today too.</div></div></div>`;
 }
 function profileEdit() {
   const p = data.profile;

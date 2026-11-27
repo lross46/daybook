@@ -315,3 +315,18 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .pdfdoc ul{margin:0;padding-left:16px}
 .pdfdoc tr{break-inside:avoid}
 .pdfdoc .foot{font-size:7.5pt;color:#6b7a77;margin-top:10px}
+
+/* search inside a tab */
+.find{display:flex;align-items:center;gap:8px;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:0 12px;height:44px}
+.find svg{width:18px;height:18px;flex:none;color:var(--muted)}
+.find input{border:0;outline:0;background:transparent;flex:1;min-width:0;font-size:16px;color:var(--fg)}
+.find:focus-within{border-color:var(--accent)}
+.yh{font-family:var(--f-data);font-size:13px;font-weight:700;color:var(--muted);padding:6px 0 8px;border-top:1px solid var(--line);margin-top:4px}
+[data-fgroup]:first-of-type .yh{border-top:0;margin-top:0}
+.jump{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.jump::-webkit-scrollbar{display:none}
+.jump button{flex:none;border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:6px 12px;font-size:13px;font-family:var(--f-data);min-height:36px}
+.jump button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+#ganttBox [data-med],#ganttBox [data-flare],#ganttBox [data-moment]{cursor:pointer}
+[data-fscope] .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+[data-fscope] .chips button{flex:none}

@@ -57,7 +57,8 @@ function medGantt(w = 360, ppy = 0, show = null, win = null) {
   const flares = live(data.flares).filter((f) => f.start), moms = live(data.moments).filter((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
   let nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
   medGantt.full = [y0, y1];
-  const mEnd = (m) => (m.stopDay ? roughYear(m.stopDay, "end") : m.stop ? roughYear(m.stop, "end") : nowY);
+  /* never past today, even when "ended November" is still November */
+  const mEnd = (m) => Math.min(nowY, m.stopDay ? roughYear(m.stopDay, "end") : m.stop ? roughYear(m.stop, "end") : nowY);
   if (win) {
     [y0, y1] = win;
     for (let k = names.length - 1; k >= 0; k--) if (!meds.some((m) => m.name === names[k] && roughYear(m.start, "start") < y1 && mEnd(m) > y0)) names.splice(k, 1);

@@ -400,3 +400,8 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 #ganttBox,#tlMini{touch-action:pan-y;user-select:none;-webkit-user-select:none}
 #trChart{touch-action:pan-y;user-select:none;-webkit-user-select:none}
 #trMini{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.card.me{gap:6px;padding:12px 14px}
+.medl{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:13.5px}
+.medl span{color:var(--muted)}
+.medl b{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
+.medl .num{font-family:var(--f-data);font-variant-numeric:tabular-nums}

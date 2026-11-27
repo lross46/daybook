@@ -3,8 +3,8 @@ const LAYERS = [["meds", "Medicines", `<i style="background:var(--med1);height:6
 const SHOW_ALL = () => ({ meds: true, flares: true, scope: true, hosp: true });
 let chartShow = SHOW_ALL();
 function timelineCard() {
-  return `<div class="card"><button class="about fold" data-act="listToggle" data-fold="tlBody" aria-expanded="false"><span class="grow"><b>Timeline</b><span class="sub">Medicines, flares, colonoscopies and hospital stays on one chart</span></span><span class="chev" aria-hidden="true">›</span></button>
-    <div id="tlBody" hidden style="display:flex;flex-direction:column;gap:10px">
+  return `<div class="card"><div class="label">Timeline</div>
+    <div id="tlBody" style="display:flex;flex-direction:column;gap:10px">
     <div class="seg" id="zoomSeg" style="grid-template-columns:repeat(6,1fr)">${TL_ZOOMS.map(([l], i) => `<button data-tlz="${i}" aria-pressed="${i === tlZ}">${l}</button>`).join("")}</div>
     <div class="row" id="tlNav"><button class="navbtn" data-tlstep="-1" aria-label="Earlier">‹</button><b id="tlLbl" class="tllbl"></b><button class="navbtn" data-tlstep="1" aria-label="Later">›</button></div>
     <div class="chips layers" role="group" aria-label="Show on the chart">${LAYERS.map(([k, l, sw]) => `<button type="button" data-layer="${k}" aria-pressed="${chartShow[k]}">${sw} ${l}</button>`).join("")}</div>

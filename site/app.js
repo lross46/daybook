@@ -574,7 +574,8 @@ function medGantt(w = 360, ppy = 0, show = null, win = null) {
   const flares = live(data.flares).filter((f) => f.start), moms = live(data.moments).filter((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
   let nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
   medGantt.full = [y0, y1];
-  const mEnd = (m) => (m.stopDay ? roughYear(m.stopDay, "end") : m.stop ? roughYear(m.stop, "end") : nowY);
+  /* never past today, even when "ended November" is still November */
+  const mEnd = (m) => Math.min(nowY, m.stopDay ? roughYear(m.stopDay, "end") : m.stop ? roughYear(m.stop, "end") : nowY);
   if (win) {
     [y0, y1] = win;
     for (let k = names.length - 1; k >= 0; k--) if (!meds.some((m) => m.name === names[k] && roughYear(m.start, "start") < y1 && mEnd(m) > y0)) names.splice(k, 1);
@@ -803,10 +804,11 @@ function renderHistory() {
   $("#main").innerHTML = `<div data-fscope style="display:contents">
   <button class="btn primary" data-act="momentAdd">+ Add an event</button>
   ${items.length ? findBox("Search medicines, flares, tests") : ""}
-  <button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button>
   ${items.length ? `${timelineCard()}
+  <button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button>
   <div class="card"><button class="about fold" data-act="listToggle" data-fold="evList" aria-expanded="false"><span class="grow"><b>All events (${items.length})</b><span class="sub">Newest first, grouped by year</span></span><span class="chev" aria-hidden="true">›</span></button>
-    <div id="evList" hidden>${findChips()}${eventList(items)}</div></div>` : `<div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
+    <div id="evList" hidden>${findChips()}${eventList(items)}</div></div>` : `<button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button><div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
+  drawChart();
 }
 function aboutOpen() {
   openSheet(`${sheetHead("About my colitis")}
@@ -915,8 +917,8 @@ const LAYERS = [["meds", "Medicines", `<i style="background:var(--med1);height:6
 const SHOW_ALL = () => ({ meds: true, flares: true, scope: true, hosp: true });
 let chartShow = SHOW_ALL();
 function timelineCard() {
-  return `<div class="card"><button class="about fold" data-act="listToggle" data-fold="tlBody" aria-expanded="false"><span class="grow"><b>Timeline</b><span class="sub">Medicines, flares, colonoscopies and hospital stays on one chart</span></span><span class="chev" aria-hidden="true">›</span></button>
-    <div id="tlBody" hidden style="display:flex;flex-direction:column;gap:10px">
+  return `<div class="card"><div class="label">Timeline</div>
+    <div id="tlBody" style="display:flex;flex-direction:column;gap:10px">
     <div class="seg" id="zoomSeg" style="grid-template-columns:repeat(6,1fr)">${TL_ZOOMS.map(([l], i) => `<button data-tlz="${i}" aria-pressed="${i === tlZ}">${l}</button>`).join("")}</div>
     <div class="row" id="tlNav"><button class="navbtn" data-tlstep="-1" aria-label="Earlier">‹</button><b id="tlLbl" class="tllbl"></b><button class="navbtn" data-tlstep="1" aria-label="Later">›</button></div>
     <div class="chips layers" role="group" aria-label="Show on the chart">${LAYERS.map(([k, l, sw]) => `<button type="button" data-layer="${k}" aria-pressed="${chartShow[k]}">${sw} ${l}</button>`).join("")}</div>
@@ -1040,7 +1042,8 @@ function renderDoctor() {
   <div class="card"><div class="row"><div class="grow"><div class="label">IBD helpline</div>${hl.number ? `<div class="count" style="font-size:22px;user-select:all">${esc(hl.number)}</div>${hl.hours ? `<div class="sub">${esc(hl.hours)}</div>` : ""}` : `<div class="sub">Add your IBD team's helpline number.</div>`}</div>
     ${hl.number ? `<a class="btn" href="tel:${esc(hl.number.replace(/[^\d+]/g, ""))}" style="display:flex;align-items:center;gap:6px;background:var(--ok);color:#fff;border-color:var(--ok)">${S("0 0 24 24", I.phone, `${stroke} width="18" height="18"`)}Call</a>` : ""}</div>
     <button class="linkbtn" data-act="helplineEdit">${hl.number ? "Edit number" : "+ Add number"}</button></div>
-  <button class="card about" data-act="meEdit"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>My details</b><span class="sub">${esc([me.name, me.nhs && "NHS " + me.nhs].filter(Boolean).join(" · ") || "Tap to add name, date of birth and NHS number")}</span></span><span class="chev" aria-hidden="true">›</span></button>
+  <div class="card me"><div class="row"><div class="label">My details</div><button class="linkbtn" data-act="meEdit">${me.name || me.dob || me.nhs ? "Edit" : "+ Add"}</button></div>
+    ${me.name || me.dob || me.nhs ? `<div class="medl"><span>Name</span><b>${esc(me.name || "–")}</b><span>Date of birth</span><b>${me.dob ? esc(fmtDate(me.dob)) : "–"}</b><span>NHS number</span><b class="num">${esc(me.nhs || "–")}</b></div>` : `<div class="sub">Add your name, date of birth and NHS number for the report.</div>`}</div>
   <div class="card">${foldHead("qBody", "Questions for next visit", qs.filter((q) => !q.done).length ? `${qs.filter((q) => !q.done).length} to ask` : "None yet")}
     <div id="qBody" ${isOpen("qBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
     <div class="f" id="qs">${qs.map((q) => `<label class="qrow"><input type="checkbox" data-q="${q.id}" ${q.done ? "checked" : ""}><span style="${q.done ? "text-decoration:line-through;color:var(--muted)" : ""}">${esc(q.text)}</span><button class="x" data-qdel="${q.id}" aria-label="Delete question">×</button></label>`).join("")}</div>
@@ -1410,7 +1413,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 55</div>
+  <div class="sub">App version 56</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });

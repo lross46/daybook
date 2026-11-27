@@ -90,10 +90,11 @@ function renderHistory() {
   $("#main").innerHTML = `<div data-fscope style="display:contents">
   <button class="btn primary" data-act="momentAdd">+ Add an event</button>
   ${items.length ? findBox("Search medicines, flares, tests") : ""}
-  <button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button>
   ${items.length ? `${timelineCard()}
+  <button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button>
   <div class="card"><button class="about fold" data-act="listToggle" data-fold="evList" aria-expanded="false"><span class="grow"><b>All events (${items.length})</b><span class="sub">Newest first, grouped by year</span></span><span class="chev" aria-hidden="true">›</span></button>
-    <div id="evList" hidden>${findChips()}${eventList(items)}</div></div>` : `<div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
+    <div id="evList" hidden>${findChips()}${eventList(items)}</div></div>` : `<button class="card about" data-act="aboutOpen"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>About my colitis</b><span class="sub">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button><div class="card"><div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays. A rough date is fine. Medicines from Meds appear here too.</div></div>`}</div>`;
+  drawChart();
 }
 function aboutOpen() {
   openSheet(`${sheetHead("About my colitis")}

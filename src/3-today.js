@@ -53,7 +53,6 @@ function renderToday() {
   const f = openFlare();
   $("#main").innerHTML = `
   <div class="row"><div class="daynav"><button data-act="dayPrev" aria-label="Previous day">‹</button><div><div class="name">${isToday ? "Today" : esc(fmtDay(k))}</div><div class="sub">${isToday ? esc(fmtDate(k)) : dayLogged(k) ? "Logged" : "Not logged"}</div></div><button data-act="dayNext" aria-label="Next day" ${isToday ? "disabled" : ""}>›</button></div>${isToday ? "" : `<button class="linkbtn" data-act="dayToday">Back to today</button>`}</div>
-  ${isToday ? heroHtml() : ""}
   <div class="card">
     <div class="row"><div><div class="label">Stools ${isToday ? "today" : "that day"}</div><div class="sub">Tap a circle to set the count</div></div><div class="count">${d.stools}</div></div>
     <div class="tokens">${toks}</div>
@@ -70,7 +69,7 @@ function renderToday() {
   <div class="card"><div class="label">Anywhere else?</div><div class="tags" data-multi="extra">${EXTRA.map(([key, l]) => `<button data-v="${key}" aria-pressed="${(d.extra || []).includes(key)}">${ico(key)}${l}</button>`).join("")}</div>${noteBlock("noteExtra", d.noteExtra, "e.g. left knee sore since Tuesday")}</div>
   <div class="card"><div class="label">Anything that might matter?</div><div class="tags" data-multi="tags">${TAGS.map(([key, l]) => `<button data-v="${key}" aria-pressed="${(d.tags || []).includes(key)}">${ico(key)}${l}</button>`).join("")}</div>${noteBlock("noteTags", d.noteTags, "e.g. what you ate, how you slept")}</div>
   <div class="saved" id="savedTxt">${dayLogged(k) ? "Saved on this phone as you go" : "Nothing logged yet. Everything saves as you tap."}</div>
-  ${isToday ? (f ? `<button class="btn flare" data-act="flareEnd">Flare ended today</button>` : `<button class="btn flare" data-act="flareStart">A flare started today</button>`) : ""}
+  ${isToday ? `<div class="sub" style="text-align:center">${f ? `In a flare since ${esc(fmtDay(f.start))} · day ${daysBetween(f.start, todayIso()) + 1}` : "No flare right now"}</div>${f ? `<button class="btn flare" data-act="flareEnd">Flare ended today</button>` : `<button class="btn flare" data-act="flareStart">A flare started today</button>`}` : ""}
   ${dayLogged(k) ? `<button class="linkbtn" style="align-self:center;color:var(--muted)" data-act="clearDay">Clear this day</button>` : ""}`;
   paintPain();
 }

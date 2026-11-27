@@ -55,6 +55,7 @@ const TAGS = [["lowmood", "Low mood"], ["anxious", "Anxious / stress"], ["sleep"
 const EXTRA = [["joint", "Joints"], ["eye", "Eyes"], ["skin", "Skin"], ["mouth", "Mouth ulcers"]];
 const EXTENT = ["Rectum only", "Left side", "Whole colon"];
 const BLOOD = ["None", "Streaks", "Some", "A lot"];
+const MUCUS = ["None", "A little", "Some", "A lot"];
 const URG = ["Normal", "Hurry", "Rush", "Accident"];
 const WELL = ["Good", "OK", "Poor", "Bad"];
 const STATE = ["Remission", "Mild", "Moderate", "Severe"];

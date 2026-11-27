@@ -44,6 +44,13 @@ const bloodIco=(n)=>{const id='bg'+n;const fill=[0,0,.5,1][n];
   if(n===0)s+=`<path d="M10 34L30 10" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round"/>`;
   if(n===1)s+=`<path d="M16 22v8M21 20v10M25 24v5" stroke="var(--blood)" stroke-width="2.5" stroke-linecap="round"/>`;
   return S('0 0 40 40',s)};
+const mucusPath='M21 6c7 1 12 7 11 14-1 8-7 13-14 12-7-1-11-7-10-14 1-6 6-13 13-12z';
+const mucusIco=(n)=>{const id='mg'+n;const fill=[0,.66,.4,0][n];
+  let s=`<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="${fill}" stop-color="var(--mucus)" stop-opacity="0"/><stop offset="${fill}" stop-color="var(--mucus)" stop-opacity=".55"/></linearGradient></defs>`;
+  s+=`<path d="${mucusPath}" fill="${n?`url(#${id})`:'none'}" stroke="var(--mucus)" stroke-width="2.5"/>`;
+  if(n===0)s+=`<path d="M10 34L30 10" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round"/>`;
+  if(n)s+=`<path d="M14 15c1-3 3-4 5-4" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".8"/>`;
+  return S('0 0 40 40',s)};
 // Urgency: chevrons
 const urgIco=n=>{if(n===0)return S('0 0 40 40','<path d="M8 22c4-5 8-5 12 0s8 5 12 0" fill="none" stroke="var(--ok)" stroke-width="3" stroke-linecap="round"/>');
   const c=SC[n];let s='';for(let i=0;i<n;i++){const x=8+i*9+(3-n)*4.5;s+=`<path d="M${x} 10l9 10-9 10" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`}

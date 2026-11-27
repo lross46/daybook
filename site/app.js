@@ -55,6 +55,7 @@ const TAGS = [["lowmood", "Low mood"], ["anxious", "Anxious / stress"], ["sleep"
 const EXTRA = [["joint", "Joints"], ["eye", "Eyes"], ["skin", "Skin"], ["mouth", "Mouth ulcers"]];
 const EXTENT = ["Rectum only", "Left side", "Whole colon"];
 const BLOOD = ["None", "Streaks", "Some", "A lot"];
+const MUCUS = ["None", "A little", "Some", "A lot"];
 const URG = ["Normal", "Hurry", "Rush", "Accident"];
 const WELL = ["Good", "OK", "Poor", "Bad"];
 const STATE = ["Remission", "Mild", "Moderate", "Severe"];
@@ -132,6 +133,13 @@ const bloodIco=(n)=>{const id='bg'+n;const fill=[0,0,.5,1][n];
   if(n===0)s+=`<path d="M10 34L30 10" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round"/>`;
   if(n===1)s+=`<path d="M16 22v8M21 20v10M25 24v5" stroke="var(--blood)" stroke-width="2.5" stroke-linecap="round"/>`;
   return S('0 0 40 40',s)};
+const mucusPath='M21 6c7 1 12 7 11 14-1 8-7 13-14 12-7-1-11-7-10-14 1-6 6-13 13-12z';
+const mucusIco=(n)=>{const id='mg'+n;const fill=[0,.66,.4,0][n];
+  let s=`<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="${fill}" stop-color="var(--mucus)" stop-opacity="0"/><stop offset="${fill}" stop-color="var(--mucus)" stop-opacity=".55"/></linearGradient></defs>`;
+  s+=`<path d="${mucusPath}" fill="${n?`url(#${id})`:'none'}" stroke="var(--mucus)" stroke-width="2.5"/>`;
+  if(n===0)s+=`<path d="M10 34L30 10" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round"/>`;
+  if(n)s+=`<path d="M14 15c1-3 3-4 5-4" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".8"/>`;
+  return S('0 0 40 40',s)};
 // Urgency: chevrons
 const urgIco=n=>{if(n===0)return S('0 0 40 40','<path d="M8 22c4-5 8-5 12 0s8 5 12 0" fill="none" stroke="var(--ok)" stroke-width="3" stroke-linecap="round"/>');
   const c=SC[n];let s='';for(let i=0;i<n;i++){const x=8+i*9+(3-n)*4.5;s+=`<path d="M${x} 10l9 10-9 10" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`}
@@ -198,7 +206,7 @@ function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); 
 /* ---------- Today ---------- */
 const getDay = (k) => (dayLogged(k) ? data.days[k] : null);
 function ensureDay(k) {
-  if (!dayLogged(k)) data.days[k] = { stools: 0, night: 0, blood: 0, urg: 0, bristol: null, pain: 0, well: 0, extra: [], tags: [], noteExtra: "", noteTags: "" };
+  if (!dayLogged(k)) data.days[k] = { stools: 0, night: 0, blood: 0, mucus: 0, urg: 0, bristol: null, pain: 0, well: 0, extra: [], tags: [], noteExtra: "", noteTags: "" };
   return data.days[k];
 }
 function heroHtml() {
@@ -218,7 +226,7 @@ function heroHtml() {
   return `<div class="card"><div class="hero">${S("0 0 132 132", ring)}<div style="min-width:0"><div class="label">Right now</div><div class="state" style="color:${color}">${title}</div><div class="sub">${sub}</div></div></div></div>`;
 }
 function renderToday() {
-  const k = viewDay, d = getDay(k) || { stools: 0, night: 0, blood: null, urg: null, bristol: null, pain: 0, well: null, extra: [], tags: [] };
+  const k = viewDay, d = getDay(k) || { stools: 0, night: 0, blood: null, mucus: null, urg: null, bristol: null, pain: 0, well: null, extra: [], tags: [] };
   const isToday = k === todayIso();
   const pick = (key, labels, iconFn, val, cls = "") => `<div class="pick ${cls}" data-pick="${key}">${labels.map((l, i) => `<button aria-pressed="${val === i}" aria-label="${esc(l)}">${iconFn(i)}${l ? `<span>${l}</span>` : ""}</button>`).join("")}</div>`;
   const nTok = Math.min(30, Math.max(12, d.stools + 1));
@@ -232,6 +240,7 @@ function renderToday() {
     <div class="row"><span class="sub" style="font-size:13.5px">${S("0 0 24 24", I.moon, `${stroke} width="18" height="18" style="display:inline;vertical-align:-4px;color:var(--med2)"`)} Of those, at night</span><div class="daynav"><button data-act="nightMinus" aria-label="One fewer at night">−</button><b class="count" style="font-size:22px;min-width:1.2em;text-align:center">${d.night || 0}</b><button data-act="nightPlus" aria-label="One more at night">+</button></div></div>
   </div>
   <div class="card"><div class="label">Blood</div>${pick("blood", BLOOD, bloodIco, d.blood, "blood")}</div>
+  <div class="card"><div class="label">Mucus</div>${pick("mucus", MUCUS, mucusIco, d.mucus ?? null, "mucus")}</div>
   <div class="card"><div class="label">Urgency</div>${pick("urg", URG, urgIco, d.urg)}</div>
   <div class="card"><div class="label">Stool type <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional)</span></div>${pick("bristol", BR.map((_, i) => String(i + 1)), brIco, d.bristol == null ? null : d.bristol - 1, "b7")}<div class="row sub"><span>Hard</span><span>Normal</span><span>Watery</span></div></div>
   <div class="card">
@@ -305,6 +314,8 @@ function barChart(keys, opts = {}) {
     s += `<rect x="${x}" y="${y(0) - h}" width="${w}" height="${h}" rx="${Math.min(3, w / 3)}" fill="${SC[lvl(sccai(d))]}"/>`;
     const ds = Math.min(.25, Math.max(.12, bw / 40)), dw = 40 * ds;
     if (d.blood) s += `<path transform="translate(${x + w / 2 - dw / 2} ${y(0) - h - dw - 3}) scale(${ds})" d="${dropPath}" fill="var(--blood)"/>`;
+    /* mucus blob sits above the drop (or on the bar when there's no blood) */
+    if (d.mucus) { const up = d.blood ? dw + 2 : 0; s += `<path transform="translate(${x + w / 2 - dw / 2} ${y(0) - h - dw - 3 - up}) scale(${ds})" d="${mucusPath}" fill="var(--mucus)"/>`; }
     /* a moon under the bar = woke at night */
     if (d.night > 0) { const ms = Math.min(.42, Math.max(.2, bw / 24)); s += `<path transform="translate(${x + w / 2 - 12 * ms} ${y(0) + 4}) scale(${ms})" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/>`; }
   });
@@ -349,17 +360,18 @@ document.addEventListener("click", (e) => { const b = e.target.closest("[data-tp
 function renderTrends() {
   const keys = periodRange(tPeriod).keys, logged = keys.filter(dayLogged);
   if (Object.keys(data.days).filter(dayLogged).length === 0) {
-    $("#main").innerHTML = `<div class="card"><div class="label">Nothing to show yet</div><p class="sub" style="margin:0;font-size:14px">Log a few days on Today and your charts appear here: stools per day, blood, flares, a calendar and what tends to come before bad days.</p><button class="btn primary" data-tab="today">Log today</button></div>`;
+    $("#main").innerHTML = `<div class="card"><div class="label">Nothing to show yet</div><p class="sub" style="margin:0;font-size:14px">Log a few days on Today and your charts appear here: stools per day, blood, mucus, flares, a calendar and what tends to come before bad days.</p><button class="btn primary" data-tab="today">Log today</button></div>`;
     return;
   }
   const calm = logged.filter((k) => lvl(sccai(data.days[k])) === 0).length;
   const blood = logged.filter((k) => data.days[k].blood > 0).length;
   const nights = logged.filter((k) => data.days[k].night > 0).length;
+  const mucus = logged.filter((k) => data.days[k].mucus > 0).length;
   const n = logged.length || 1;
   $("#main").innerHTML = `
   ${heroHtml()}
   <div class="seg" id="tperiod">${PERIODS.map(([l, m]) => `<button data-tperiod="${m}" aria-pressed="${m === tPeriod}">${l}</button>`).join("")}</div>
-  <div class="card"><div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div>${barChart(keys)}<div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">Bar height = stools that day. Drop on top = blood, moon underneath = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
+  <div class="card"><div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--mucus)">${mucus}</b> with mucus</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div>${barChart(keys)}<div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 40 40" width="10" height="10" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${mucusPath}" fill="var(--mucus)"/></svg>Mucus</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">Bar height = stools that day. Drop on top = blood, blob on top = mucus, moon underneath = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
   <div class="card">${foldHead("calBody", "Calendar", `${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)} · tap a day to open it`)}<div id="calBody" ${foldOpen.calBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px"><div class="row"><div class="daynav"><button data-act="calPrev" aria-label="Previous month">‹</button><div class="name">${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)}</div><button data-act="calNext" aria-label="Next month" ${calMonth >= todayIso().slice(0, 7) ? "disabled" : ""}>›</button></div></div>${calendar(calMonth)}</div></div>
   ${badDaysCard(keys)}`;
 }
@@ -370,7 +382,7 @@ function calendar(ym) {
   for (let d = 1; d <= dim; d++) {
     const k = `${ym}-${pad(d)}`, day = getDay(k);
     if (k > t) { h += `<div style="color:var(--line)">${d}</div>`; continue; }
-    h += day ? `<div class="s${lvl(sccai(day))}" data-day="${k}" style="cursor:pointer">${d}${day.blood ? S("0 0 40 40", `<path d="${dropPath}" fill="#fff"/>`, 'class="dr"') : ""}${day.night > 0 ? S("0 0 24 24", `<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="#fff"/>`, 'class="mn"') : ""}</div>` : `<div class="empty" data-day="${k}" style="cursor:pointer">${d}</div>`;
+    h += day ? `<div class="s${lvl(sccai(day))}" data-day="${k}" style="cursor:pointer">${d}${day.blood ? S("0 0 40 40", `<path d="${dropPath}" fill="#fff"/>`, 'class="dr"') : ""}${day.mucus ? S("0 0 40 40", `<path d="${mucusPath}" fill="#fff"/>`, 'class="mu"') : ""}${day.night > 0 ? S("0 0 24 24", `<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="#fff"/>`, 'class="mn"') : ""}</div>` : `<div class="empty" data-day="${k}" style="cursor:pointer">${d}</div>`;
   }
   return `<div class="cal">${h}</div>`;
 }
@@ -791,6 +803,7 @@ function periodStats(r) {
     logged: logged.length,
     avgStools: D.reduce((a, d) => a + d.stools, 0) / n,
     blood: D.filter((d) => d.blood > 0).length,
+    mucus: D.filter((d) => d.mucus > 0).length,
     urg: D.filter((d) => d.urg > 0).length,
     nights: D.filter((d) => d.night > 0).length,
     pain: D.reduce((a, d) => a + (d.pain || 0), 0) / n,
@@ -873,7 +886,7 @@ function reportHtml() {
   ${inc.activity ? `<h2>Colitis activity</h2>
   ${st.logged ? `<div class="score"><div class="n" style="color:${SC_HEX[lvl(st.latest)]}">${st.latest}</div><div><b>${STATE[lvl(st.latest)]}</b> · SCCAI on ${esc(fmtDay(st.latestDay))}, worked out from the daily log<br><span class="muted">Remission 0-2 · Mild 3-5 · Moderate 6-11 · Severe 12+</span></div></div>${sccaiBars(r.keys, 680, 110, true)}<div class="legend">${STATE.map((l, i) => `<span><i style="background:${SC_HEX[i]}"></i>${l}</span>`).join("")}</div>` : `<div class="muted">No days logged in this period.</div>`}
   <h2>Period at a glance</h2>
-  <div class="grid">${[["Stools a day (avg)", st.avgStools.toFixed(1)], ["Days with blood", `${st.blood} of ${st.logged}`], ["Days with urgency", st.urg], ["Nights woken", st.nights], ["Average pain (0-10)", st.pain.toFixed(1)], ["Flares", st.flares.length ? st.flares.map((f) => `from ${fmtRough(f.start)}${f.end ? " to " + fmtRough(f.end) : ", ongoing"}`).join("; ") : "None"]].map(([t, v]) => `<div class="k"><b>${esc(v)}</b><span>${t}</span></div>`).join("")}</div>
+  <div class="grid">${[["Stools a day (avg)", st.avgStools.toFixed(1)], ["Days with blood", `${st.blood} of ${st.logged}`], ["Days with mucus", `${st.mucus} of ${st.logged}`], ["Days with urgency", st.urg], ["Nights woken", st.nights], ["Average pain (0-10)", st.pain.toFixed(1)], ["Flares", st.flares.length ? st.flares.map((f) => `from ${fmtRough(f.start)}${f.end ? " to " + fmtRough(f.end) : ", ongoing"}`).join("; ") : "None"]].map(([t, v]) => `<div class="k"><b>${esc(v)}</b><span>${t}</span></div>`).join("")}</div>
 ` : ""}
   <div class="two"><div>${inc.meds ? `<h2>Current medicines</h2>${currentMeds().length ? `<table><tr><th>Medicine</th><th>Dose</th><th>Since</th></tr>${currentMeds().map((m) => `<tr><td>${esc(m.name)}${m.form && m.form !== "Tablet" ? " (" + esc(m.form.toLowerCase()) + ")" : ""}</td><td>${esc(doseText(m))}</td><td>${esc(fmtRough(m.start))}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}
     <div class="muted" style="margin-top:4px">Changes in this period: ${(() => { const ch = []; for (const m of live(data.meds)) { if (roughLo(m.start) >= r.start) ch.push(`started ${m.name}`); for (const c of m.changes || []) if (roughLo(c.from) >= r.start) ch.push(`${m.name} to ${c.dose}`); if (m.stop && roughSort(m.stop) >= r.start) ch.push(`stopped ${m.name}`); } return esc(ch.join(", ") || "none"); })()}.</div>
@@ -881,9 +894,9 @@ function reportHtml() {
   <div>${inc.questions && live(data.questions).filter((q) => !q.done).length ? `<h2>Questions for this visit</h2><ul>${live(data.questions).filter((q) => !q.done).map((q) => `<li>${esc(q.text)}</li>`).join("")}</ul>` : ""}</div></div>
 
 
-  ${inc.days && days.length ? `${inc.hist || summ ? `<div class="pb"></div>` : ""}<h2>Day by day</h2><div class="muted" style="margin-bottom:4px">Newest first. Shaded rows = flare. Score = SCCAI. Type = Bristol stool scale (1 hard to 7 watery).</div>
-  <table class="days"><tr><th>Day</th><th>Score</th><th>Stools</th><th>Night</th><th>Blood</th><th>Urgency</th><th>Type</th><th>Pain</th><th>Feeling</th><th>Other symptoms, tags and notes</th></tr>
-  ${days.map((k) => { const d = data.days[k], v = sccai(d); return `<tr class="${inFlare(k) ? "fl" : ""}"><td style="white-space:nowrap">${esc(fmtDay(k))}</td><td><span class="dot" style="background:${SC_HEX[lvl(v)]}"></span>${v}</td><td>${d.stools}</td><td>${d.night || 0}</td><td>${BLOOD[d.blood || 0]}</td><td>${URG[d.urg || 0]}</td><td>${d.bristol || ""}</td><td>${d.pain || 0}</td><td>${WELL[d.well || 0]}</td><td>${esc([(d.extra || []).map(exName).join(", "), d.noteExtra, (d.tags || []).map(tagName).join(", "), d.noteTags].filter(Boolean).join(" · "))}</td></tr>`; }).join("")}</table>` : ""}
+  ${inc.days && days.length ? `${inc.hist || summ ? `<div class="pb"></div>` : ""}<h2>Day by day</h2><div class="muted" style="margin-bottom:4px">Newest first. Shaded rows = flare. Score = SCCAI (mucus is logged but not part of the score). Type = Bristol stool scale (1 hard to 7 watery).</div>
+  <table class="days"><tr><th>Day</th><th>Score</th><th>Stools</th><th>Night</th><th>Blood</th><th>Mucus</th><th>Urgency</th><th>Type</th><th>Pain</th><th>Feeling</th><th>Other symptoms, tags and notes</th></tr>
+  ${days.map((k) => { const d = data.days[k], v = sccai(d); return `<tr class="${inFlare(k) ? "fl" : ""}"><td style="white-space:nowrap">${esc(fmtDay(k))}</td><td><span class="dot" style="background:${SC_HEX[lvl(v)]}"></span>${v}</td><td>${d.stools}</td><td>${d.night || 0}</td><td>${BLOOD[d.blood || 0]}</td><td>${MUCUS[d.mucus || 0]}</td><td>${URG[d.urg || 0]}</td><td>${d.bristol || ""}</td><td>${d.pain || 0}</td><td>${WELL[d.well || 0]}</td><td>${esc([(d.extra || []).map(exName).join(", "), d.noteExtra, (d.tags || []).map(tagName).join(", "), d.noteTags].filter(Boolean).join(" · "))}</td></tr>`; }).join("")}</table>` : ""}
   <div class="foot">Personal symptom log kept by the patient. Not a medical record. SCCAI = Simple Clinical Colitis Activity Index, calculated automatically from daily entries.</div>`;
 }
 let pdfP = null, pdfFile = null;
@@ -928,7 +941,7 @@ async function shareOrDownload(blob, name) {
 function makeExcel() {
   if (!window.XLSX) { toast("Excel tool didn't load. Try again online."); return; }
   const tagName = (k) => (TAGS.find((t) => t[0] === k) || [k, k])[1];
-  const days = Object.keys(data.days).filter(dayLogged).sort().map((k) => { const d = data.days[k], v = sccai(d); const row = { Date: k, SCCAI: v, Activity: STATE[lvl(v)], Flare: inFlare(k) ? "yes" : "", Stools: d.stools, "Night stools": d.night || 0, Blood: BLOOD[d.blood || 0], Urgency: URG[d.urg || 0], "Stool type (Bristol)": d.bristol || "", Pain: d.pain || 0, Feeling: WELL[d.well || 0] }; for (const [k2, l] of EXTRA) row[l] = (d.extra || []).includes(k2) ? 1 : 0; row["Note (other symptoms)"] = d.noteExtra || ""; for (const [k2, l] of TAGS) row[l] = (d.tags || []).includes(k2) ? 1 : 0; row["Note (other)"] = d.noteTags || ""; return row; });
+  const days = Object.keys(data.days).filter(dayLogged).sort().map((k) => { const d = data.days[k], v = sccai(d); const row = { Date: k, SCCAI: v, Activity: STATE[lvl(v)], Flare: inFlare(k) ? "yes" : "", Stools: d.stools, "Night stools": d.night || 0, Blood: BLOOD[d.blood || 0], Mucus: MUCUS[d.mucus || 0], Urgency: URG[d.urg || 0], "Stool type (Bristol)": d.bristol || "", Pain: d.pain || 0, Feeling: WELL[d.well || 0] }; for (const [k2, l] of EXTRA) row[l] = (d.extra || []).includes(k2) ? 1 : 0; row["Note (other symptoms)"] = d.noteExtra || ""; for (const [k2, l] of TAGS) row[l] = (d.tags || []).includes(k2) ? 1 : 0; row["Note (other)"] = d.noteTags || ""; return row; });
   const meds = []; for (const m of live(data.meds)) { meds.push({ Medicine: m.name, Steroid: isSteroid(m.name) ? "yes" : "", Form: m.form || "", Dose: m.dose || "", "How often": m.freq || "", From: m.start || "", To: m.stop || "", "Why stopped": m.why || "", Note: m.note || "" }); for (const c of m.changes || []) meds.push({ Medicine: m.name, Steroid: isSteroid(m.name) ? "yes" : "", Form: m.form || "", Dose: c.dose || "", "How often": c.freq || "", From: c.from, To: "", "Why stopped": "", Note: "dose change" }); }
   const hist = timelineItems().filter((x) => !x.auto).map((m) => ({ When: m.when, What: m.title, Details: m.desc }));
   const p = data.profile, ab = [{ Field: "Diagnosed", Value: p.diagYear || "" }, { Field: "Extent now", Value: p.extentNow || "" }, { Field: "Furthest extent", Value: p.extentMax || "" }, { Field: "Other symptoms ever", Value: (p.symptomsEver || []).join(", ") }];

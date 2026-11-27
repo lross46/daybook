@@ -19,7 +19,7 @@ function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); 
 /* ---------- Today ---------- */
 const getDay = (k) => (dayLogged(k) ? data.days[k] : null);
 function ensureDay(k) {
-  if (!dayLogged(k)) data.days[k] = { stools: 0, night: 0, blood: 0, urg: 0, bristol: null, pain: 0, well: 0, extra: [], tags: [], noteExtra: "", noteTags: "" };
+  if (!dayLogged(k)) data.days[k] = { stools: 0, night: 0, blood: 0, mucus: 0, urg: 0, bristol: null, pain: 0, well: 0, extra: [], tags: [], noteExtra: "", noteTags: "" };
   return data.days[k];
 }
 function heroHtml() {
@@ -39,7 +39,7 @@ function heroHtml() {
   return `<div class="card"><div class="hero">${S("0 0 132 132", ring)}<div style="min-width:0"><div class="label">Right now</div><div class="state" style="color:${color}">${title}</div><div class="sub">${sub}</div></div></div></div>`;
 }
 function renderToday() {
-  const k = viewDay, d = getDay(k) || { stools: 0, night: 0, blood: null, urg: null, bristol: null, pain: 0, well: null, extra: [], tags: [] };
+  const k = viewDay, d = getDay(k) || { stools: 0, night: 0, blood: null, mucus: null, urg: null, bristol: null, pain: 0, well: null, extra: [], tags: [] };
   const isToday = k === todayIso();
   const pick = (key, labels, iconFn, val, cls = "") => `<div class="pick ${cls}" data-pick="${key}">${labels.map((l, i) => `<button aria-pressed="${val === i}" aria-label="${esc(l)}">${iconFn(i)}${l ? `<span>${l}</span>` : ""}</button>`).join("")}</div>`;
   const nTok = Math.min(30, Math.max(12, d.stools + 1));
@@ -53,6 +53,7 @@ function renderToday() {
     <div class="row"><span class="sub" style="font-size:13.5px">${S("0 0 24 24", I.moon, `${stroke} width="18" height="18" style="display:inline;vertical-align:-4px;color:var(--med2)"`)} Of those, at night</span><div class="daynav"><button data-act="nightMinus" aria-label="One fewer at night">−</button><b class="count" style="font-size:22px;min-width:1.2em;text-align:center">${d.night || 0}</b><button data-act="nightPlus" aria-label="One more at night">+</button></div></div>
   </div>
   <div class="card"><div class="label">Blood</div>${pick("blood", BLOOD, bloodIco, d.blood, "blood")}</div>
+  <div class="card"><div class="label">Mucus</div>${pick("mucus", MUCUS, mucusIco, d.mucus ?? null, "mucus")}</div>
   <div class="card"><div class="label">Urgency</div>${pick("urg", URG, urgIco, d.urg)}</div>
   <div class="card"><div class="label">Stool type <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional)</span></div>${pick("bristol", BR.map((_, i) => String(i + 1)), brIco, d.bristol == null ? null : d.bristol - 1, "b7")}<div class="row sub"><span>Hard</span><span>Normal</span><span>Watery</span></div></div>
   <div class="card">

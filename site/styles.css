@@ -2,19 +2,19 @@
 :root{
   --bg:#eef3f2; --surface:#ffffff; --fg:#152120; --muted:#5b6b68; --line:#d8e2e0; --sunk:#f4f8f7;
   --accent:#1f7a6d; --accent-soft:#d9eeea; --on-accent:#ffffff;
-  --ok:#2f9a58; --mild:#d39b16; --mod:#e0702f; --sev:#c4353f; --blood:#c4353f; --blood-soft:#f6d9db;
+  --ok:#2f9a58; --mild:#d39b16; --mod:#e0702f; --sev:#c4353f; --blood:#c4353f; --blood-soft:#f6d9db; --mucus:#5f86a6; --mucus-soft:#e2ebf3;
   --stool:#8a5a33; --stool-2:#b07a4c; --flare:rgba(224,112,47,.14); --med1:#3f7fd1; --med2:#8d5bd0; --med3:#e0a21a; --med4:#1f9a8a;
   --f-display:ui-rounded,-apple-system,system-ui,sans-serif; --f-body:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif; --f-data:ui-monospace,"SF Mono",Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0d1413; --surface:#172120; --fg:#e5eeec; --muted:#97a9a5; --line:#283432; --sunk:#111a19;
   --accent:#4fc2b0; --accent-soft:#1b3632; --on-accent:#06201b;
-  --ok:#5ccb85; --mild:#ecc04f; --mod:#f28d55; --sev:#f0646d; --blood:#f0646d; --blood-soft:#3a1d21;
+  --ok:#5ccb85; --mild:#ecc04f; --mod:#f28d55; --sev:#f0646d; --blood:#f0646d; --blood-soft:#3a1d21; --mucus:#9cbcd6; --mucus-soft:#1d2833;
   --stool:#c89062; --stool-2:#dfb08a; --flare:rgba(242,141,85,.17); --med1:#6ea6f0; --med2:#b38cf0; --med3:#f0c04a; --med4:#4fc2b0; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0d1413; --surface:#172120; --fg:#e5eeec; --muted:#97a9a5; --line:#283432; --sunk:#111a19;
   --accent:#4fc2b0; --accent-soft:#1b3632; --on-accent:#06201b;
-  --ok:#5ccb85; --mild:#ecc04f; --mod:#f28d55; --sev:#f0646d; --blood:#f0646d; --blood-soft:#3a1d21;
+  --ok:#5ccb85; --mild:#ecc04f; --mod:#f28d55; --sev:#f0646d; --blood:#f0646d; --blood-soft:#3a1d21; --mucus:#9cbcd6; --mucus-soft:#1d2833;
   --stool:#c89062; --stool-2:#dfb08a; --flare:rgba(242,141,85,.17); --med1:#6ea6f0; --med2:#b38cf0; --med3:#f0c04a; --med4:#4fc2b0; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -378,3 +378,5 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .now .medtap>svg{width:26px;height:26px}
 .now .medtap .sub{font-size:12px}
 #nowList .medtap:first-child{margin-top:0;border-top:0}
+.pick.mucus button[aria-pressed="true"]{border-color:var(--mucus);background:var(--mucus-soft)}
+.cal div .mu{position:absolute;bottom:3px;right:3px;width:8px;height:8px}

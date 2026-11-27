@@ -433,7 +433,7 @@ function badDaysCard(keys) {
   const r = badDays(keys);
   const clear = r ? r.filter((x) => x.verdict === 3).map((x) => x.l) : [];
   const sum = r === null ? "Needs at least 10 logged days outside flares" : clear.length ? `Clear sign: ${clear.join(", ")}` : "No clear signs in this period";
-  return `<div class="card">${foldHead("trigBody", "What comes before bad days", sum)}<div id="trigBody" ${foldOpen.trigBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:8px">
+  return `<div class="card">${foldHead("trigBody", "What comes before bad days", sum)}<div id="trigBody" ${isOpen("trigBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:8px">
     <div class="seg" style="grid-template-columns:repeat(3,1fr)">${[2, 3, 4].map((n) => `<button data-bdwin="${n}" aria-pressed="${n === bdWin}">${n} days after</button>`).join("")}</div>
     ${r === null ? `<div class="sub">Keep logging. It needs at least 10 days outside flares in the period picked above.</div>` : !r.length ? `<div class="sub">No tags used in this period yet. Add them on Today under "Anything that might matter?".</div>` :
     r.map((x) => { const [vl, vc, vb] = VERDICT[x.verdict]; return `<details class="bd"><summary>${ico(x.t)}<span class="grow"><b>${esc(x.l)}</b><span class="sub">${x.n < 5 ? `used ${x.n} time${x.n > 1 ? "s" : ""}, needs 5` : `worse in the next ${bdWin} days ${x.worse} of ${x.n} times`}</span></span><span class="vd" style="color:${vc};background:${vb}">${vl}</span></summary>
@@ -457,7 +457,7 @@ function renderTrends() {
   ${heroHtml()}
   <div class="seg" id="tperiod">${PERIODS.map(([l, m]) => `<button data-tperiod="${m}" aria-pressed="${m === tPeriod}">${l}</button>`).join("")}</div>
   <div class="card"><div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--mucus)">${mucus}</b> with mucus</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div>${barChart(keys)}<div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 40 40" width="10" height="10" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${mucusPath}" fill="var(--mucus)"/></svg>Mucus</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">Bar height = stools that day. Drop on top = blood, blob on top = mucus, moon underneath = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
-  <div class="card">${foldHead("calBody", "Calendar", `${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)} · tap a day to open it`)}<div id="calBody" ${foldOpen.calBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px"><div class="row"><div class="daynav"><button data-act="calPrev" aria-label="Previous month">‹</button><div class="name">${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)}</div><button data-act="calNext" aria-label="Next month" ${calMonth >= todayIso().slice(0, 7) ? "disabled" : ""}>›</button></div></div>${calendar(calMonth)}</div></div>
+  <div class="card">${foldHead("calBody", "Calendar", `${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)} · tap a day to open it`)}<div id="calBody" ${isOpen("calBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px"><div class="row"><div class="daynav"><button data-act="calPrev" aria-label="Previous month">‹</button><div class="name">${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)}</div><button data-act="calNext" aria-label="Next month" ${calMonth >= todayIso().slice(0, 7) ? "disabled" : ""}>›</button></div></div>${calendar(calMonth)}</div></div>
   ${badDaysCard(keys)}`;
 }
 function calendar(ym) {
@@ -744,6 +744,7 @@ function aboutOpen() {
 }
 /* folded sections stay open while the tab redraws (e.g. after ticking a question) */
 const foldOpen = {};
+const isOpen = (id) => !!foldOpen[tab + "." + id];
 const foldHead = (id, title, sub) => `<button class="about fold" data-act="listToggle" data-fold="${id}" aria-expanded="${!!foldOpen[tab + "." + id]}"><span class="grow"><b>${esc(title)}</b><span class="sub">${esc(sub)}</span></span><span class="chev" aria-hidden="true"${foldOpen[id] ? ' style="transform:rotate(90deg)"' : ""}>›</span></button>`;
 /* open or close a folded section: the button names its section with data-fold (default: the list) */
 function listToggle(el, open) {
@@ -915,12 +916,12 @@ function renderDoctor() {
     <button class="linkbtn" data-act="helplineEdit">${hl.number ? "Edit number" : "+ Add number"}</button></div>
   <button class="card about" data-act="meEdit"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>My details</b><span class="sub">${esc([me.name, me.nhs && "NHS " + me.nhs].filter(Boolean).join(" · ") || "Tap to add name, date of birth and NHS number")}</span></span><span class="chev" aria-hidden="true">›</span></button>
   <div class="card">${foldHead("qBody", "Questions for next visit", qs.filter((q) => !q.done).length ? `${qs.filter((q) => !q.done).length} to ask` : "None yet")}
-    <div id="qBody" ${foldOpen.qBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
+    <div id="qBody" ${isOpen("qBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
     <div class="f" id="qs">${qs.map((q) => `<label class="qrow"><input type="checkbox" data-q="${q.id}" ${q.done ? "checked" : ""}><span style="${q.done ? "text-decoration:line-through;color:var(--muted)" : ""}">${esc(q.text)}</span><button class="x" data-qdel="${q.id}" aria-label="Delete question">×</button></label>`).join("")}</div>
     <form id="qForm" class="row" style="gap:8px"><input id="qIn" class="in" placeholder="Type a question"><button class="btn small" style="padding:10px 14px">Add</button></form>
     ${qs.some((q) => q.done) ? `<button class="linkbtn" data-act="qClear">Remove ticked questions</button>` : ""}</div></div>
   <div class="card rep">${foldHead("repBody", "Report for my IBD team", `Last ${PERIODS.find(([, m]) => m === period)?.[0] || ""} · PDF or Excel`)}
-    <div id="repBody" ${foldOpen.repBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
+    <div id="repBody" ${isOpen("repBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
     <div class="seg" id="period">${PERIODS.map(([l, m]) => `<button data-period="${m}" aria-pressed="${m === period}">${l}</button>`).join("")}</div>
     <div class="sub">Put in the report</div>
     <div class="chips" role="group" aria-label="Put in the report">${REP_PARTS.map(([k, l]) => `<button type="button" data-rep="${k}" aria-pressed="${!!repInc[k]}">${l}</button>`).join("")}</div>
@@ -1283,7 +1284,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 48</div>
+  <div class="sub">App version 49</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });

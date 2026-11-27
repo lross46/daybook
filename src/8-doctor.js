@@ -43,12 +43,12 @@ function renderDoctor() {
     <button class="linkbtn" data-act="helplineEdit">${hl.number ? "Edit number" : "+ Add number"}</button></div>
   <button class="card about" data-act="meEdit"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>My details</b><span class="sub">${esc([me.name, me.nhs && "NHS " + me.nhs].filter(Boolean).join(" · ") || "Tap to add name, date of birth and NHS number")}</span></span><span class="chev" aria-hidden="true">›</span></button>
   <div class="card">${foldHead("qBody", "Questions for next visit", qs.filter((q) => !q.done).length ? `${qs.filter((q) => !q.done).length} to ask` : "None yet")}
-    <div id="qBody" ${foldOpen.qBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
+    <div id="qBody" ${isOpen("qBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
     <div class="f" id="qs">${qs.map((q) => `<label class="qrow"><input type="checkbox" data-q="${q.id}" ${q.done ? "checked" : ""}><span style="${q.done ? "text-decoration:line-through;color:var(--muted)" : ""}">${esc(q.text)}</span><button class="x" data-qdel="${q.id}" aria-label="Delete question">×</button></label>`).join("")}</div>
     <form id="qForm" class="row" style="gap:8px"><input id="qIn" class="in" placeholder="Type a question"><button class="btn small" style="padding:10px 14px">Add</button></form>
     ${qs.some((q) => q.done) ? `<button class="linkbtn" data-act="qClear">Remove ticked questions</button>` : ""}</div></div>
   <div class="card rep">${foldHead("repBody", "Report for my IBD team", `Last ${PERIODS.find(([, m]) => m === period)?.[0] || ""} · PDF or Excel`)}
-    <div id="repBody" ${foldOpen.repBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
+    <div id="repBody" ${isOpen("repBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
     <div class="seg" id="period">${PERIODS.map(([l, m]) => `<button data-period="${m}" aria-pressed="${m === period}">${l}</button>`).join("")}</div>
     <div class="sub">Put in the report</div>
     <div class="chips" role="group" aria-label="Put in the report">${REP_PARTS.map(([k, l]) => `<button type="button" data-rep="${k}" aria-pressed="${!!repInc[k]}">${l}</button>`).join("")}</div>

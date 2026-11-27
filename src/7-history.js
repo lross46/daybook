@@ -103,6 +103,7 @@ function aboutOpen() {
 }
 /* folded sections stay open while the tab redraws (e.g. after ticking a question) */
 const foldOpen = {};
+const isOpen = (id) => !!foldOpen[tab + "." + id];
 const foldHead = (id, title, sub) => `<button class="about fold" data-act="listToggle" data-fold="${id}" aria-expanded="${!!foldOpen[tab + "." + id]}"><span class="grow"><b>${esc(title)}</b><span class="sub">${esc(sub)}</span></span><span class="chev" aria-hidden="true"${foldOpen[id] ? ' style="transform:rotate(90deg)"' : ""}>›</span></button>`;
 /* open or close a folded section: the button names its section with data-fold (default: the list) */
 function listToggle(el, open) {

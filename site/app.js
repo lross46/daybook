@@ -215,13 +215,7 @@ function heroHtml() {
     color = "var(--ok)"; title = "No flare"; sub = last ? `Last flare ended ${fmtDate(last.end)}` : "Tap below if a flare starts";
     ring = `<circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--ok)" stroke-width="14" opacity="${n == null ? .25 : 1}"/>` + (n == null ? `<path d="M46 68l14 14 26-30" fill="none" stroke="var(--ok)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>` : `<text x="66" y="78" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-weight="700" font-size="${n > 999 ? 30 : 40}" fill="var(--fg)">${n}</text><text x="66" y="98" text-anchor="middle" font-size="12" fill="var(--muted)">days calm</text>`);
   }
-  const week = [];
-  for (let i = 6; i >= 0; i--) {
-    const k = addDays(t, -i), d = getDay(k), L = d ? lvl(sccai(d)) : null;
-    week.push(`<div><i style="background:${L == null ? "transparent;border:2px dashed var(--line)" : SC[L]}"></i>${DOW[parseIso(k).getDay()][0]}</div>`);
-  }
-  return `<div class="card"><div class="hero">${S("0 0 132 132", ring)}<div style="min-width:0"><div class="label">Right now</div><div class="state" style="color:${color}">${title}</div><div class="sub">${sub}</div></div></div>
-  <div><div class="label" style="margin-bottom:6px">Last 7 days</div><div class="week">${week.join("")}</div></div></div>`;
+  return `<div class="card"><div class="hero">${S("0 0 132 132", ring)}<div style="min-width:0"><div class="label">Right now</div><div class="state" style="color:${color}">${title}</div><div class="sub">${sub}</div></div></div></div>`;
 }
 function renderToday() {
   const k = viewDay, d = getDay(k) || { stools: 0, night: 0, blood: null, urg: null, bristol: null, pain: 0, well: null, extra: [], tags: [] };

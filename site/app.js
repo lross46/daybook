@@ -463,11 +463,11 @@ function renderMeds() {
   $("#main").innerHTML = `<div data-fscope style="display:contents">
   <button class="btn primary" data-act="medAdd">+ Add medicine</button>
   ${cur.length + past.length > 3 ? findBox("Search medicines") : ""}
-  <div class="card" data-fgroup><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="sub">Tap one to see it</span>` : ""}</div>
-    ${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.form, m.note, isSteroid(m.name) && "steroid")}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}
+  <div class="card" data-fgroup>${cur.length ? `<button class="about fold" data-act="listToggle" data-fold="nowList" aria-expanded="false"><span class="grow"><b>Taking now (${cur.length})</b><span class="sub">${esc(cur.map((m) => m.name).slice(0, 3).join(", ") + (cur.length > 3 ? ` and ${cur.length - 3} more` : ""))}</span></span><span class="chev" aria-hidden="true">›</span></button>` : `<div class="label">Taking now</div>`}
+    <div id="nowList" ${cur.length ? "hidden" : ""}>${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.form, m.note, isSteroid(m.name) && "steroid")}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}</div>
   </div>
   <div class="empty-note" data-fempty hidden>No medicine matches. Try another word.</div>
-  ${past.length ? `<div class="card" data-fgroup><button class="about fold" data-act="listToggle" data-show="${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}" aria-expanded="false"><span class="grow"><b>Tried before (${past.length})</b><span class="sub">${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}</span></span><span class="chev" aria-hidden="true">›</span></button>
+  ${past.length ? `<div class="card" data-fgroup><button class="about fold" data-act="listToggle" data-fold="evList" data-show="${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}" aria-expanded="false"><span class="grow"><b>Tried before (${past.length})</b><span class="sub">${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}</span></span><span class="chev" aria-hidden="true">›</span></button>
     <div id="evList" hidden>${past.map((m) => `<div class="tr" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.why, m.note, fmtRough(m.start), fmtRough(m.stop), isSteroid(m.name) && "steroid")}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stop))}</span></div><div class="sub">${esc([doseText(m) === "Dose not set" ? "" : doseText(m), m.why, m.note].filter(Boolean).join(" · ") || "Reason not set")}${isSteroid(m.name) ? " · steroid" : ""}</div></div></div>`).join("")}</div></div>` : ""}
   <button class="card about" data-act="steroidOpen"><span class="grow"><b>Steroid courses</b><span class="sub"><b style="color:var(--mild)">${st.recent.length}</b> in the last 12 months · ${st.all.length} ever</span></span><span class="chev" aria-hidden="true">›</span></button></div>`;
 }
@@ -572,7 +572,7 @@ function applyFind(scope) {
   }
   for (const grp of scope.querySelectorAll("[data-fgroup]")) grp.hidden = !grp.querySelector("[data-fi]:not([hidden])");
   for (const e of scope.querySelectorAll("[data-fempty]")) e.hidden = any;
-  if (scope.querySelector("#evList") && (q || g !== "all")) listToggle(null, true);
+  if (q || g !== "all") for (const fb of scope.querySelectorAll('[data-act="listToggle"][data-fold]:not([data-fold="tlBody"])')) listToggle(fb, true);
   if (q && first && first.dataset.y && scope.querySelector("#ganttBox")) jumpTo(+first.dataset.y, true);
 }
 document.addEventListener("input", (e) => { if (e.target.matches("[data-find]")) applyFind(e.target.closest("[data-fscope]")); });

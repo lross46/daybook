@@ -46,7 +46,7 @@ function applyFind(scope) {
   }
   for (const grp of scope.querySelectorAll("[data-fgroup]")) grp.hidden = !grp.querySelector("[data-fi]:not([hidden])");
   for (const e of scope.querySelectorAll("[data-fempty]")) e.hidden = any;
-  if (scope.querySelector("#evList") && (q || g !== "all")) listToggle(null, true);
+  if (q || g !== "all") for (const fb of scope.querySelectorAll('[data-act="listToggle"][data-fold]:not([data-fold="tlBody"])')) listToggle(fb, true);
   if (q && first && first.dataset.y && scope.querySelector("#ganttBox")) jumpTo(+first.dataset.y, true);
 }
 document.addEventListener("input", (e) => { if (e.target.matches("[data-find]")) applyFind(e.target.closest("[data-fscope]")); });

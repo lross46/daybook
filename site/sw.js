@@ -1,5 +1,5 @@
 // Network first, falling back to the last cached copy so the app opens offline.
-const CACHE = "daybook-v13";
+const CACHE = "daybook-v14";
 const SHELL = ["./", "index.html", "app.js", "styles.css", "manifest.webmanifest", "vendor/xlsx.mini.min.js", "icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {

@@ -13,7 +13,7 @@ function confirmTap(el) {
   setTimeout(() => { if (el.isConnected) { delete el.dataset.armed; el.innerHTML = el._txt; } }, 3500);
   return false;
 }
-const NEEDS_CONFIRM = new Set(["medDelete", "testDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
+const NEEDS_CONFIRM = new Set(["medDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
 const ACTS = {
   close: () => closeSheet(),
   settings: () => settingsSheet(),
@@ -41,15 +41,6 @@ const ACTS = {
   medDose: (el) => medDose(el.dataset.id),
   medStop: (el) => medStop(el.dataset.id),
   medFix: (el) => medForm(byId(data.meds, el.dataset.id)),
-  /* Tests */
-  tPhoto: () => photoEntry(),
-  tPaste: () => textEntry("paste"),
-  tVoice: () => textEntry("voice"),
-  tType: () => typeEntry(null),
-  txtRead: () => { const t = $("#txtIn").value; if (!t.trim()) { toast("Nothing to read yet"); return; } reviewSheet(parseResults(t), "Check before saving"); },
-  revSave: () => revSave(),
-  tySave: (el) => tySave(el.dataset.id),
-  testDelete: (el) => tomb(data.tests, el.dataset.id, "Result deleted"),
   /* History */
   profileEdit: () => profileEdit(),
   profileSave: () => profileSave(),
@@ -81,8 +72,6 @@ document.addEventListener("click", (e) => {
   if (e.target.id === "scrim") { closeSheet(); return; }
   const day = e.target.closest("[data-day]"); if (day) { viewDay = day.dataset.day; go("today"); return; }
   const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medActions(m); return; }
-  const tst = e.target.closest("[data-test]"); if (tst) { testDetail(tst.dataset.test); return; }
-  const tr = e.target.closest("[data-testrow]"); if (tr) { const x = byId(data.tests, tr.dataset.testrow); if (x) typeEntry(x); return; }
   const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
   const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentForm(x); return; }
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareForm(x); return; }

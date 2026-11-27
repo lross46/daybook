@@ -177,8 +177,8 @@ const dripbag=(c)=>S('0 0 58 32',`<rect x="20" y="2" width="18" height="20" rx="
 const medIcon=(m,c)=>({Rectal:bullet,Injection:syringe,Drip:dripbag}[m.form]||(/vitamin|iron|folic/i.test(m.name)?tablet:capsule))(c);
 
 /* ---------- navigation ---------- */
-const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["tests", "Tests", I.tube], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
-const TITLES = { today: "Today", trends: "Trends", meds: "Medicines", tests: "Tests", history: "My history", doctor: "My IBD team" };
+const TABS = [["today", "Today", I.today], ["trends", "Trends", I.trend], ["meds", "Meds", I.pill], ["history", "History", I.clock], ["doctor", "Doctor", I.doc]];
+const TITLES = { today: "Today", trends: "Trends", meds: "Medicines", history: "My history", doctor: "My IBD team" };
 let tab = LS.get("gl.tab", "today");
 let viewDay = todayIso();
 function renderNav() {
@@ -189,7 +189,7 @@ function render() {
   renderNav();
   $("#ttl").textContent = TITLES[tab];
   $("#hsub").textContent = fmtDay(todayIso()).replace(/^(\w+) /, (m, d) => ({ Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" }[d] + " "));
-  ({ today: renderToday, trends: renderTrends, meds: renderMeds, tests: renderTests, history: renderHistory, doctor: renderDoctor })[tab]();
+  ({ today: renderToday, trends: renderTrends, meds: renderMeds, history: renderHistory, doctor: renderDoctor })[tab]();
 }
 function go(t) { tab = t; LS.set("gl.tab", t); window.scrollTo(0, 0); render(); }
 
@@ -513,166 +513,6 @@ function medStop(id) {
   stamp(m); save("Stopped. Moved to Tried before"); closeSheet(); render();
 }
 
-/* ---------- Tests ---------- */
-const TESTDEF = [
-  { name: "Calprotectin", unit: "µg/g", hi: 200, range: "under 50", al: ["faecal calprotectin", "fecal calprotectin", "calprotectin", "calpro", "fcp"] },
-  { name: "CRP", unit: "mg/L", hi: 5, range: "0 to 5", al: ["c-reactive protein", "c reactive protein", "crp"] },
-  { name: "Haemoglobin", unit: "g/L", range: "about 130 to 180", al: ["haemoglobin", "hemoglobin", "hgb", "hb"] },
-  { name: "Albumin", unit: "g/L", lo: 35, range: "35 to 50", al: ["albumin", "alb"] },
-  { name: "White cells", unit: "×10⁹/L", lo: 4, hi: 11, range: "4 to 11", al: ["white cell count", "white blood cell count", "white blood cells", "white cells", "wbc"] },
-  { name: "Platelets", unit: "×10⁹/L", lo: 150, hi: 400, range: "150 to 400", al: ["platelet count", "platelets", "plt"] },
-  { name: "ESR", unit: "mm/hr", al: ["erythrocyte sedimentation rate", "esr"] },
-  { name: "Ferritin", unit: "µg/L", al: ["ferritin"] },
-  { name: "Vitamin D", unit: "nmol/L", al: ["vitamin d", "25-oh vitamin d", "25 hydroxy vitamin d"] },
-  { name: "Vitamin B12", unit: "ng/L", al: ["vitamin b12", "b12"] },
-  { name: "ALT", unit: "U/L", al: ["alanine aminotransferase", "alt"] },
-  { name: "Creatinine", unit: "µmol/L", al: ["creatinine"] },
-];
-const testDef = (n) => TESTDEF.find((t) => t.name === n) || { name: n, unit: "" };
-const SOURCES = ["NHS App", "IBD nurse call", "Hospital letter", "Home test", "Other"];
-
-/* Reads results out of free text (pasted, dictated or OCR'd). Runs only on this phone. */
-function parseResults(text) {
-  const t = " " + text.toLowerCase().replace(/[‐–—]/g, "-").replace(/\s+/g, " ") + " ";
-  const found = [], used = [];
-  for (const def of TESTDEF) {
-    for (const a of def.al) {
-      const re = new RegExp(`(?:^|[^a-z0-9])${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z])[^0-9]{0,30}?(<|>)?\\s*(\\d+(?:[.,]\\d+)?)`, "g");
-      let mm; while ((mm = re.exec(t))) {
-        const pos = mm.index; if (used.some(([a1, b1]) => pos >= a1 && pos < b1)) continue;
-        used.push([pos, pos + mm[0].length]);
-        found.push({ name: def.name, value: parseFloat(mm[2].replace(",", ".")), unit: def.unit, sign: mm[1] || "" });
-        break;
-      }
-      if (found.some((f) => f.name === def.name)) break;
-    }
-  }
-  return { results: found, date: parseDateIn(t), source: /nurse/.test(t) ? "IBD nurse call" : /letter|clinic/.test(t) ? "Hospital letter" : /home test|at home/.test(t) ? "Home test" : "" };
-}
-function parseDateIn(t) {
-  const now = new Date(), mi = (s) => MONTHS_L.findIndex((m) => m.toLowerCase().startsWith(s.slice(0, 3)));
-  let m;
-  if ((m = t.match(/(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})/))) { let y = +m[3]; if (y < 100) y += 2000; return iso(new Date(y, +m[2] - 1, +m[1])); }
-  if ((m = t.match(/(\d{4})-(\d{2})-(\d{2})/))) return `${m[1]}-${m[2]}-${m[3]}`;
-  if ((m = t.match(/(\d{1,2})(?:st|nd|rd|th)?(?: of)?[ -](jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?[ -]?(\d{4})?/))) {
-    const y = m[3] ? +m[3] : now.getFullYear(); let d = new Date(y, mi(m[2]), +m[1]); if (!m[3] && d > now) d = new Date(y - 1, mi(m[2]), +m[1]); return iso(d);
-  }
-  if ((m = t.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* (\d{1,2})(?:st|nd|rd|th)?,? ?(\d{4})?/))) {
-    const y = m[3] ? +m[3] : now.getFullYear(); return iso(new Date(y, mi(m[1]), +m[2]));
-  }
-  if (/yesterday/.test(t)) return addDays(todayIso(), -1);
-  return "";
-}
-function spark(pts, def, w = 130, h = 44) {
-  const ys = pts.map((p) => p.value), mx = Math.max(...ys, def.hi || 0) * 1.1 || 1, mn = Math.min(0, ...ys);
-  const xs = pts.map((p) => roughYear(p.date)), x0 = Math.min(...xs) - .05, x1 = Math.max(...xs) + .05;
-  const X = (v) => 4 + (v - x0) / (x1 - x0 || 1) * (w - 8), Y = (v) => h - 4 - (v - mn) / (mx - mn) * (h - 8);
-  const bad = (v) => (def.hi && v > def.hi) || (def.lo && v < def.lo);
-  let s = def.hi ? `<line x1="0" x2="${w}" y1="${Y(def.hi)}" y2="${Y(def.hi)}" stroke="var(--sev)" stroke-dasharray="3 3" opacity=".6"/>` : "";
-  if (pts.length > 1) s += `<polyline points="${pts.map((p, i) => X(xs[i]) + "," + Y(p.value)).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
-  pts.forEach((p, i) => s += `<circle cx="${pts.length === 1 ? w - 10 : X(xs[i])}" cy="${Y(p.value)}" r="${i === pts.length - 1 ? 4 : 2.8}" fill="${bad(p.value) ? "var(--sev)" : "var(--accent)"}"/>`);
-  return S(`0 0 ${w} ${h}`, s, `style="width:${w}px;height:${h}px"`);
-}
-function testGroups() {
-  const g = {};
-  for (const t of live(data.tests)) (g[t.name] = g[t.name] || []).push(t);
-  return Object.entries(g).map(([n, arr]) => [n, arr.sort((a, b) => (a.date < b.date ? -1 : 1))]).sort((a, b) => (a[1].slice(-1)[0].date < b[1].slice(-1)[0].date ? 1 : -1));
-}
-const isBad = (def, v) => (def.hi && v > def.hi) || (def.lo && v < def.lo);
-function renderTests() {
-  const g = testGroups();
-  $("#main").innerHTML = `
-  <div class="card"><div class="label">Add results</div>
-    <div class="addgrid">
-      <button data-act="tPhoto">${S("0 0 24 24", I.camera, stroke)}<b>Screenshot or photo</b><span>e.g. NHS App results</span></button>
-      <button data-act="tPaste">${S("0 0 24 24", I.paste, stroke)}<b>Paste text</b><span>copied from anywhere</span></button>
-      <button data-act="tVoice">${S("0 0 24 24", I.mic, stroke)}<b>Say it</b><span>e.g. after a nurse call</span></button>
-      <button data-act="tType">${S("0 0 24 24", I.pen, stroke)}<b>Type it</b><span>one result at a time</span></button>
-    </div><div class="sub">Read on your phone. Nothing is uploaded, and you check every value before it's saved.</div></div>
-  <div class="row"><div class="label">My results</div><a class="pill" href="https://www.nhs.uk/nhs-app/" target="_blank" rel="noopener">Open NHS App ↗</a></div>
-  ${g.length ? g.map(([n, pts]) => { const def = testDef(n), last = pts[pts.length - 1]; return `<div class="test" data-test="${esc(n)}"><div style="min-width:0"><div class="name">${esc(n)}</div><div class="v" style="color:${isBad(def, last.value) ? "var(--sev)" : "var(--fg)"}">${last.sign || ""}${last.value} <small>${esc(last.unit)}</small></div><div class="sub">${esc(fmtDate(last.date))}${last.source ? " · " + esc(last.source) : ""} · ${pts.length} result${pts.length > 1 ? "s" : ""}</div></div>${spark(pts, def)}</div>`; }).join("") : `<div class="empty-note">No results yet. Add them whenever you get them; gaps are normal.</div>`}`;
-}
-function reviewSheet(parsed, title, extra = "") {
-  const rows = parsed.results;
-  const opts = (sel) => TESTDEF.map((d) => `<option ${d.name === sel ? "selected" : ""}>${d.name}</option>`).join("");
-  openSheet(`${sheetHead(title)}${extra}
-  ${rows.length ? `<div class="label">Found ${rows.length} result${rows.length > 1 ? "s" : ""} · check them</div>` : `<div class="warn">No results recognised. Check the text, or add them one by one with "Type it".</div>`}
-  <div class="f" id="revRows">${rows.map((r) => `<div class="two" style="grid-template-columns:24px 1fr 90px;align-items:center"><input type="checkbox" checked aria-label="Include"><select>${opts(r.name)}</select><input inputmode="decimal" value="${r.sign || ""}${r.value}" aria-label="Value"></div>`).join("")}</div>
-  ${rows.length ? `<div class="two"><label class="f"><span>Date</span><input id="revDate" type="date" value="${parsed.date || todayIso()}" max="${todayIso()}"></label><label class="f"><span>From</span><select id="revSrc">${SOURCES.map((s) => `<option ${s === parsed.source ? "selected" : ""}>${s}</option>`).join("")}</select></label></div>${parsed.date ? "" : `<div class="sub">No date found in the text, so it's set to today. Change it if needed.</div>`}<button class="btn primary" data-act="revSave">Save results</button>` : ""}`);
-}
-function revSave() {
-  const date = $("#revDate").value || todayIso(), src = $("#revSrc").value; let n = 0;
-  for (const row of $$("#revRows > div")) {
-    const [cb, sel, val] = $$("input,select", row); if (!cb.checked) continue;
-    const raw = val.value.trim().replace(",", "."), sign = /^[<>]/.test(raw) ? raw[0] : "", v = parseFloat(raw.replace(/^[<>]/, ""));
-    if (isNaN(v)) continue;
-    data.tests.push(stamp({ id: uid(), name: sel.value, value: v, sign, unit: testDef(sel.value).unit, date, source: src })); n++;
-  }
-  save(n ? `Saved ${n} result${n > 1 ? "s" : ""}` : "Nothing saved"); closeSheet(); render();
-}
-function textEntry(kind) {
-  const voice = kind === "voice";
-  openSheet(`${sheetHead(voice ? "Say it" : "Paste text")}
-  <div class="sub">${voice ? "Tap in the box, then the microphone on your keyboard, and say the results, e.g. \"Calprotectin 410 from the IBD nurse, 18 November\"." : "Paste results copied from the NHS App, an email or a letter."}</div>
-  <textarea id="txtIn" rows="5" placeholder="${voice ? "Calprotectin 410, nurse call, 18 November" : "C-reactive protein 8 mg/L\nHaemoglobin 132 g/L"}"></textarea>
-  <button class="btn primary" data-act="txtRead" data-kind="${kind}">Read it</button>`);
-  setTimeout(() => $("#txtIn")?.focus(), 250);
-}
-function typeEntry(t) {
-  const def = t ? testDef(t.name) : TESTDEF[0];
-  openSheet(`${sheetHead(t ? "Edit result" : "Type a result")}
-  <label class="f"><span>Test</span><select id="tyName">${TESTDEF.map((d) => `<option ${d.name === def.name ? "selected" : ""}>${d.name}</option>`).join("")}${t && !TESTDEF.find((d) => d.name === t.name) ? `<option selected>${esc(t.name)}</option>` : ""}<option value="__other">Other test…</option></select></label>
-  <input id="tyOther" hidden placeholder="Test name">
-  <div class="two"><label class="f"><span>Value</span><input id="tyVal" inputmode="decimal" value="${t ? (t.sign || "") + t.value : ""}"></label><label class="f"><span>Unit</span><input id="tyUnit" value="${esc(t ? t.unit : def.unit)}"></label></div>
-  <div class="two"><label class="f"><span>Date</span><input id="tyDate" type="date" value="${t?.date || todayIso()}" max="${todayIso()}"></label><label class="f"><span>From</span><select id="tySrc">${SOURCES.map((s) => `<option ${s === (t?.source || "NHS App") ? "selected" : ""}>${s}</option>`).join("")}</select></label></div>
-  <button class="btn primary" data-act="tySave" data-id="${t?.id || ""}">Save result</button>
-  ${t ? `<button class="btn danger" data-act="testDelete" data-id="${t.id}">Delete this result</button>` : ""}`);
-}
-document.addEventListener("change", (e) => {
-  if (e.target.id === "tyName") { const o = e.target.value === "__other"; $("#tyOther").hidden = !o; if (!o) $("#tyUnit").value = testDef(e.target.value).unit; }
-});
-function tySave(id) {
-  let name = $("#tyName").value; if (name === "__other") name = $("#tyOther").value.trim();
-  const raw = $("#tyVal").value.trim().replace(",", "."), sign = /^[<>]/.test(raw) ? raw[0] : "", v = parseFloat(raw.replace(/^[<>]/, ""));
-  if (!name || isNaN(v)) { toast("Add the test and a number"); return; }
-  let t = id && data.tests.find((x) => x.id === id); if (!t) { t = { id: uid() }; data.tests.push(t); }
-  Object.assign(t, { name, value: v, sign, unit: $("#tyUnit").value.trim(), date: $("#tyDate").value || todayIso(), source: $("#tySrc").value });
-  stamp(t); save("Saved"); closeSheet(); render();
-}
-function testDetail(name) {
-  const pts = (testGroups().find(([n]) => n === name) || [, []])[1], def = testDef(name);
-  openSheet(`${sheetHead(name, def.range ? "Usual range " + esc(def.range) + " " + esc(def.unit) : "")}
-  <div>${spark(pts, def, 330, 90).replace('style="width:330px;height:90px"', 'style="width:100%;height:auto"')}</div>
-  <div>${pts.slice().reverse().map((t) => `<div class="tr" data-testrow="${t.id}" style="grid-template-columns:1fr auto"><div><div class="name" style="color:${isBad(def, t.value) ? "var(--sev)" : "var(--fg)"}">${t.sign || ""}${t.value} ${esc(t.unit)}</div><div class="sub">${esc(fmtDate(t.date))}${t.source ? " · " + esc(t.source) : ""}</div></div><span class="sub">Edit ›</span></div>`).join("")}</div>`);
-}
-
-/* OCR: tesseract.js (served from this site) is loaded only when needed; the image never leaves the phone. */
-let ocrLib = null;
-function loadOcr() {
-  if (ocrLib) return ocrLib;
-  ocrLib = new Promise((res, rej) => { const s = document.createElement("script"); s.src = "vendor/ocr/tesseract.min.js"; s.onload = () => res(window.Tesseract); s.onerror = () => { ocrLib = null; rej(new Error("Couldn't load the text reader. Check your internet and try again.")); }; document.head.appendChild(s); });
-  return ocrLib;
-}
-function photoEntry() {
-  openSheet(`${sheetHead("From a screenshot or photo")}
-  <div class="sub">Pick a screenshot of your results (e.g. from the NHS App). It's read on this phone and isn't uploaded or saved.</div>
-  <label class="btn primary" style="display:block">Choose screenshot or photo<input id="ocrFile" type="file" accept="image/*" hidden></label>
-  <div id="ocrStatus" class="sub"></div>`);
-}
-document.addEventListener("change", async (e) => {
-  if (e.target.id !== "ocrFile" || !e.target.files[0]) return;
-  const file = e.target.files[0], st = $("#ocrStatus");
-  st.innerHTML = `<span class="spin"></span> Reading the image… (the first time takes a little longer)`;
-  try {
-    const T = await loadOcr();
-    const base = new URL("vendor/ocr/", location.href).href;
-    const w = await T.createWorker("eng", 1, { workerPath: base + "worker.min.js", corePath: base, langPath: base, gzip: true, workerBlobURL: false });
-    const { data: r } = await w.recognize(file); w.terminate();
-    const parsed = parseResults(r.text); if (!parsed.source) parsed.source = "NHS App";
-    reviewSheet(parsed, "From a screenshot", `<details class="sub"><summary>Text found in the image</summary><div class="shot" style="white-space:pre-wrap">${esc(r.text.trim())}</div></details>`);
-  } catch (err) { st.innerHTML = `<span class="warn" style="display:block">${esc(err.message || "Couldn't read that image.")}</span>`; }
-});
-
 /* ---------- History ---------- */
 const MTYPES = [["colonoscopy", "Colonoscopy", "scope", "var(--accent)"], ["flare", "Flare", "flag", "var(--mod)"], ["hospital", "Hospital stay", "hospital", "var(--sev)"], ["surgery", "Surgery", "cut", "var(--sev)"], ["diagnosis", "Diagnosis", "diag", "var(--accent)"], ["other", "Other", "pen", "var(--muted)"]];
 const mtype = (k) => MTYPES.find((m) => m[0] === k) || MTYPES[5];
@@ -853,7 +693,7 @@ function renderDoctor() {
     ${st.logged ? `<div class="row"><div class="grow"><div class="label">Colitis activity (SCCAI)</div><div class="sub">Worked out from your daily log${st.latestDay !== todayIso() ? ", last logged " + fmtDay(st.latestDay) : ""}.</div></div><div style="text-align:right"><div class="count" style="color:${SC[lvl(st.latest)]}">${st.latest}</div><div class="sub">${STATE[lvl(st.latest)].toLowerCase()}</div></div></div>
     ${sccaiBars(r.keys)}
     <div class="kpis">${kpi("toilet", st.avgStools.toFixed(1), "stools a day", "var(--stool)")}${kpi("drop", st.blood, "days with blood", "var(--blood)")}${kpi("bolt", st.urg, "days with urgency", "var(--mod)")}${kpi("moon", st.nights, "nights woken", "var(--med2)")}${kpi("flag", st.flares.length, st.flares.length === 1 ? "flare" : "flares", "var(--mod)")}${kpi("pill", currentMeds().length, "current medicines", "var(--accent)")}</div>
-    <div class="sub">${st.logged} of ${r.keys.length} days logged. Plus current medicines, steroids, latest tests and your questions.</div>` : `<div class="empty-note">No days logged in this period yet.</div>`}
+    <div class="sub">${st.logged} of ${r.keys.length} days logged. Plus current medicines, steroids and your questions.</div>` : `<div class="empty-note">No days logged in this period yet.</div>`}
     <div class="sec"><span class="num">3</span><div class="grow"><div class="name">Day by day</div><div class="sub">Every logged day in the period, newest first</div></div></div>
   </div>
   <div class="btns"><button class="btn primary" data-act="pdf">Save PDF</button><button class="btn primary" data-act="excel">Save Excel</button></div>
@@ -884,7 +724,6 @@ function reportHtml() {
   const strip = lifeStrip(680).replace(/var\(--ok\)/g, SC_HEX[0]).replace(/var\(--mild\)/g, SC_HEX[1]).replace(/var\(--mod\)/g, SC_HEX[2]).replace(/var\(--sev\)/g, SC_HEX[3]).replace(/var\(--fg\)/g, "#152120").replace(/var\(--muted\)/g, "#6b7a77").replace(/min-width:340px;/, "");
   const gantt = medGantt(680).replace(/var\(--med(\d)\)/g, (m, i) => MED_HEX[i - 1]).replace(/var\(--(ok|mild|mod|sev)\)/g, (m, k) => SC_HEX[["ok", "mild", "mod", "sev"].indexOf(k)]).replace(/var\(--fg\)/g, "#152120").replace(/var\(--muted\)/g, "#6b7a77").replace(/var\(--line\)/g, "#dde5e3").replace(/min-width:340px;/, "");
   const moments = timelineItems().filter((x) => !x.auto);
-  const tg = testGroups();
   const days = r.keys.filter(dayLogged).reverse();
   const tagName = (k) => (TAGS.find((t) => t[0] === k) || [k, k])[1];
   const exName = (k) => (EXTRA.find((t) => t[0] === k) || [k, k])[1];
@@ -911,8 +750,8 @@ function reportHtml() {
   <div class="two"><div><h2>Current medicines</h2>${currentMeds().length ? `<table><tr><th>Medicine</th><th>Dose</th><th>Since</th></tr>${currentMeds().map((m) => `<tr><td>${esc(m.name)}${m.form && m.form !== "Tablet" ? " (" + esc(m.form.toLowerCase()) + ")" : ""}</td><td>${esc(doseText(m))}</td><td>${esc(fmtRough(m.start))}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}
     <div class="muted" style="margin-top:4px">Changes in this period: ${(() => { const ch = []; for (const m of live(data.meds)) { if (roughLo(m.start) >= r.start) ch.push(`started ${m.name}`); for (const c of m.changes || []) if (roughLo(c.from) >= r.start) ch.push(`${m.name} to ${c.dose}`); if (m.stop && roughSort(m.stop) >= r.start) ch.push(`stopped ${m.name}`); } return esc(ch.join(", ") || "none"); })()}.</div>
     <h2>Steroids</h2><div>${stc.recent.length} course${stc.recent.length === 1 ? "" : "s"} in the last 12 months · ${stc.all.length} ever</div></div>
-  <div><h2>Latest tests</h2>${tg.length ? `<table><tr><th>Test</th><th>Latest</th><th>Usual</th><th>Trend</th></tr>${tg.map(([n, pts]) => { const d = testDef(n), l = pts[pts.length - 1]; return `<tr><td>${esc(n)}<div class="muted" style="font-size:7.5pt">${esc(fmtDate(l.date))}${l.source ? " · " + esc(l.source) : ""}</div></td><td class="${isBad(d, l.value) ? "hi" : ""}">${l.sign || ""}${l.value} ${esc(l.unit)}</td><td class="muted">${esc(d.range || "")}</td><td>${spark(pts, d, 110, 26).replace(/var\(--accent\)/g, "#1f7a6d").replace(/var\(--sev\)/g, "#c4353f")}</td></tr>`; }).join("")}</table>` : `<div class="muted">None recorded</div>`}</div></div>
-  ${live(data.questions).filter((q) => !q.done).length ? `<h2>Questions for this visit</h2><ul>${live(data.questions).filter((q) => !q.done).map((q) => `<li>${esc(q.text)}</li>`).join("")}</ul>` : ""}
+  <div>${live(data.questions).filter((q) => !q.done).length ? `<h2>Questions for this visit</h2><ul>${live(data.questions).filter((q) => !q.done).map((q) => `<li>${esc(q.text)}</li>`).join("")}</ul>` : ""}</div></div>
+
 
   ${days.length ? `<div class="pb"></div><h2>Day by day</h2><div class="muted" style="margin-bottom:4px">Newest first. Shaded rows = flare. Score = SCCAI. Type = Bristol stool scale (1 hard to 7 watery).</div>
   <table class="days"><tr><th>Day</th><th>Score</th><th>Stools</th><th>Night</th><th>Blood</th><th>Urgency</th><th>Type</th><th>Pain</th><th>Feeling</th><th>Other symptoms, tags and notes</th></tr>
@@ -940,11 +779,10 @@ function makeExcel() {
   const tagName = (k) => (TAGS.find((t) => t[0] === k) || [k, k])[1];
   const days = Object.keys(data.days).filter(dayLogged).sort().map((k) => { const d = data.days[k], v = sccai(d); const row = { Date: k, SCCAI: v, Activity: STATE[lvl(v)], Flare: inFlare(k) ? "yes" : "", Stools: d.stools, "Night stools": d.night || 0, Blood: BLOOD[d.blood || 0], Urgency: URG[d.urg || 0], "Stool type (Bristol)": d.bristol || "", Pain: d.pain || 0, Feeling: WELL[d.well || 0] }; for (const [k2, l] of EXTRA) row[l] = (d.extra || []).includes(k2) ? 1 : 0; row["Note (other symptoms)"] = d.noteExtra || ""; for (const [k2, l] of TAGS) row[l] = (d.tags || []).includes(k2) ? 1 : 0; row["Note (other)"] = d.noteTags || ""; return row; });
   const meds = []; for (const m of live(data.meds)) { meds.push({ Medicine: m.name, Steroid: isSteroid(m.name) ? "yes" : "", Form: m.form || "", Dose: m.dose || "", "How often": m.freq || "", From: m.start || "", To: m.stop || "", "Why stopped": m.why || "", Note: m.note || "" }); for (const c of m.changes || []) meds.push({ Medicine: m.name, Steroid: isSteroid(m.name) ? "yes" : "", Form: m.form || "", Dose: c.dose || "", "How often": c.freq || "", From: c.from, To: "", "Why stopped": "", Note: "dose change" }); }
-  const tests = live(data.tests).sort((a, b) => (a.date < b.date ? -1 : 1)).map((t) => ({ Date: t.date, Test: t.name, Value: t.value, Sign: t.sign || "", Unit: t.unit, Source: t.source || "" }));
   const hist = timelineItems().filter((x) => !x.auto).map((m) => ({ When: m.when, What: m.title, Details: m.desc }));
   const p = data.profile, ab = [{ Field: "Diagnosed", Value: p.diagYear || "" }, { Field: "Extent now", Value: p.extentNow || "" }, { Field: "Furthest extent", Value: p.extentMax || "" }, { Field: "Other symptoms ever", Value: (p.symptomsEver || []).join(", ") }];
   const wb = XLSX.utils.book_new();
-  for (const [n, rows] of [["Days", days], ["Medicines", meds], ["Tests", tests], ["History", hist], ["About", ab]]) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ "(empty)": "" }]), n);
+  for (const [n, rows] of [["Days", days], ["Medicines", meds], ["History", hist], ["About", ab]]) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ "(empty)": "" }]), n);
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   shareOrDownload(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `gut-log-${todayIso()}.xlsx`);
 }
@@ -1238,7 +1076,7 @@ function confirmTap(el) {
   setTimeout(() => { if (el.isConnected) { delete el.dataset.armed; el.innerHTML = el._txt; } }, 3500);
   return false;
 }
-const NEEDS_CONFIRM = new Set(["medDelete", "testDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
+const NEEDS_CONFIRM = new Set(["medDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
 const ACTS = {
   close: () => closeSheet(),
   settings: () => settingsSheet(),
@@ -1266,15 +1104,6 @@ const ACTS = {
   medDose: (el) => medDose(el.dataset.id),
   medStop: (el) => medStop(el.dataset.id),
   medFix: (el) => medForm(byId(data.meds, el.dataset.id)),
-  /* Tests */
-  tPhoto: () => photoEntry(),
-  tPaste: () => textEntry("paste"),
-  tVoice: () => textEntry("voice"),
-  tType: () => typeEntry(null),
-  txtRead: () => { const t = $("#txtIn").value; if (!t.trim()) { toast("Nothing to read yet"); return; } reviewSheet(parseResults(t), "Check before saving"); },
-  revSave: () => revSave(),
-  tySave: (el) => tySave(el.dataset.id),
-  testDelete: (el) => tomb(data.tests, el.dataset.id, "Result deleted"),
   /* History */
   profileEdit: () => profileEdit(),
   profileSave: () => profileSave(),
@@ -1306,8 +1135,6 @@ document.addEventListener("click", (e) => {
   if (e.target.id === "scrim") { closeSheet(); return; }
   const day = e.target.closest("[data-day]"); if (day) { viewDay = day.dataset.day; go("today"); return; }
   const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medActions(m); return; }
-  const tst = e.target.closest("[data-test]"); if (tst) { testDetail(tst.dataset.test); return; }
-  const tr = e.target.closest("[data-testrow]"); if (tr) { const x = byId(data.tests, tr.dataset.testrow); if (x) typeEntry(x); return; }
   const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
   const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentForm(x); return; }
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareForm(x); return; }

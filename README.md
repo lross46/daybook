@@ -7,7 +7,6 @@ A private daily log for ulcerative colitis, built as a phone web app.
   encrypted on the phone (AES-256-GCM, key from your passphrase via PBKDF2-SHA256)
   and saved as one file, `data/vault.enc`, in a private repo of your choice.
   Without the passphrase the file can't be read.
-- Screenshots of test results are read on the phone (tesseract.js, served from this site).
 - The toilet finder sends your location only to the OpenStreetMap Overpass server.
 - Not medical advice. It is a diary to share with your IBD team.
 
@@ -15,7 +14,7 @@ A private daily log for ulcerative colitis, built as a phone web app.
 
 `./build.sh` joins `src/*.js` into `site/app.js`. GitHub Actions publishes `site/` to GitHub Pages.
 
-Third-party code in `site/vendor/` keeps its own licence (SheetJS, tesseract.js).
+Third-party code in `site/vendor/` keeps its own licence (SheetJS).
 
 ## Licence
 

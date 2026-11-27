@@ -53,7 +53,7 @@ function renderDoctor() {
     ${st.logged ? `<div class="row"><div class="grow"><div class="label">Colitis activity (SCCAI)</div><div class="sub">Worked out from your daily log${st.latestDay !== todayIso() ? ", last logged " + fmtDay(st.latestDay) : ""}.</div></div><div style="text-align:right"><div class="count" style="color:${SC[lvl(st.latest)]}">${st.latest}</div><div class="sub">${STATE[lvl(st.latest)].toLowerCase()}</div></div></div>
     ${sccaiBars(r.keys)}
     <div class="kpis">${kpi("toilet", st.avgStools.toFixed(1), "stools a day", "var(--stool)")}${kpi("drop", st.blood, "days with blood", "var(--blood)")}${kpi("bolt", st.urg, "days with urgency", "var(--mod)")}${kpi("moon", st.nights, "nights woken", "var(--med2)")}${kpi("flag", st.flares.length, st.flares.length === 1 ? "flare" : "flares", "var(--mod)")}${kpi("pill", currentMeds().length, "current medicines", "var(--accent)")}</div>
-    <div class="sub">${st.logged} of ${r.keys.length} days logged. Plus current medicines, steroids, latest tests and your questions.</div>` : `<div class="empty-note">No days logged in this period yet.</div>`}
+    <div class="sub">${st.logged} of ${r.keys.length} days logged. Plus current medicines, steroids and your questions.</div>` : `<div class="empty-note">No days logged in this period yet.</div>`}
     <div class="sec"><span class="num">3</span><div class="grow"><div class="name">Day by day</div><div class="sub">Every logged day in the period, newest first</div></div></div>
   </div>
   <div class="btns"><button class="btn primary" data-act="pdf">Save PDF</button><button class="btn primary" data-act="excel">Save Excel</button></div>
@@ -84,7 +84,6 @@ function reportHtml() {
   const strip = lifeStrip(680).replace(/var\(--ok\)/g, SC_HEX[0]).replace(/var\(--mild\)/g, SC_HEX[1]).replace(/var\(--mod\)/g, SC_HEX[2]).replace(/var\(--sev\)/g, SC_HEX[3]).replace(/var\(--fg\)/g, "#152120").replace(/var\(--muted\)/g, "#6b7a77").replace(/min-width:340px;/, "");
   const gantt = medGantt(680).replace(/var\(--med(\d)\)/g, (m, i) => MED_HEX[i - 1]).replace(/var\(--(ok|mild|mod|sev)\)/g, (m, k) => SC_HEX[["ok", "mild", "mod", "sev"].indexOf(k)]).replace(/var\(--fg\)/g, "#152120").replace(/var\(--muted\)/g, "#6b7a77").replace(/var\(--line\)/g, "#dde5e3").replace(/min-width:340px;/, "");
   const moments = timelineItems().filter((x) => !x.auto);
-  const tg = testGroups();
   const days = r.keys.filter(dayLogged).reverse();
   const tagName = (k) => (TAGS.find((t) => t[0] === k) || [k, k])[1];
   const exName = (k) => (EXTRA.find((t) => t[0] === k) || [k, k])[1];
@@ -111,8 +110,8 @@ function reportHtml() {
   <div class="two"><div><h2>Current medicines</h2>${currentMeds().length ? `<table><tr><th>Medicine</th><th>Dose</th><th>Since</th></tr>${currentMeds().map((m) => `<tr><td>${esc(m.name)}${m.form && m.form !== "Tablet" ? " (" + esc(m.form.toLowerCase()) + ")" : ""}</td><td>${esc(doseText(m))}</td><td>${esc(fmtRough(m.start))}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}
     <div class="muted" style="margin-top:4px">Changes in this period: ${(() => { const ch = []; for (const m of live(data.meds)) { if (roughLo(m.start) >= r.start) ch.push(`started ${m.name}`); for (const c of m.changes || []) if (roughLo(c.from) >= r.start) ch.push(`${m.name} to ${c.dose}`); if (m.stop && roughSort(m.stop) >= r.start) ch.push(`stopped ${m.name}`); } return esc(ch.join(", ") || "none"); })()}.</div>
     <h2>Steroids</h2><div>${stc.recent.length} course${stc.recent.length === 1 ? "" : "s"} in the last 12 months · ${stc.all.length} ever</div></div>
-  <div><h2>Latest tests</h2>${tg.length ? `<table><tr><th>Test</th><th>Latest</th><th>Usual</th><th>Trend</th></tr>${tg.map(([n, pts]) => { const d = testDef(n), l = pts[pts.length - 1]; return `<tr><td>${esc(n)}<div class="muted" style="font-size:7.5pt">${esc(fmtDate(l.date))}${l.source ? " · " + esc(l.source) : ""}</div></td><td class="${isBad(d, l.value) ? "hi" : ""}">${l.sign || ""}${l.value} ${esc(l.unit)}</td><td class="muted">${esc(d.range || "")}</td><td>${spark(pts, d, 110, 26).replace(/var\(--accent\)/g, "#1f7a6d").replace(/var\(--sev\)/g, "#c4353f")}</td></tr>`; }).join("")}</table>` : `<div class="muted">None recorded</div>`}</div></div>
-  ${live(data.questions).filter((q) => !q.done).length ? `<h2>Questions for this visit</h2><ul>${live(data.questions).filter((q) => !q.done).map((q) => `<li>${esc(q.text)}</li>`).join("")}</ul>` : ""}
+  <div>${live(data.questions).filter((q) => !q.done).length ? `<h2>Questions for this visit</h2><ul>${live(data.questions).filter((q) => !q.done).map((q) => `<li>${esc(q.text)}</li>`).join("")}</ul>` : ""}</div></div>
+
 
   ${days.length ? `<div class="pb"></div><h2>Day by day</h2><div class="muted" style="margin-bottom:4px">Newest first. Shaded rows = flare. Score = SCCAI. Type = Bristol stool scale (1 hard to 7 watery).</div>
   <table class="days"><tr><th>Day</th><th>Score</th><th>Stools</th><th>Night</th><th>Blood</th><th>Urgency</th><th>Type</th><th>Pain</th><th>Feeling</th><th>Other symptoms, tags and notes</th></tr>
@@ -140,11 +139,10 @@ function makeExcel() {
   const tagName = (k) => (TAGS.find((t) => t[0] === k) || [k, k])[1];
   const days = Object.keys(data.days).filter(dayLogged).sort().map((k) => { const d = data.days[k], v = sccai(d); const row = { Date: k, SCCAI: v, Activity: STATE[lvl(v)], Flare: inFlare(k) ? "yes" : "", Stools: d.stools, "Night stools": d.night || 0, Blood: BLOOD[d.blood || 0], Urgency: URG[d.urg || 0], "Stool type (Bristol)": d.bristol || "", Pain: d.pain || 0, Feeling: WELL[d.well || 0] }; for (const [k2, l] of EXTRA) row[l] = (d.extra || []).includes(k2) ? 1 : 0; row["Note (other symptoms)"] = d.noteExtra || ""; for (const [k2, l] of TAGS) row[l] = (d.tags || []).includes(k2) ? 1 : 0; row["Note (other)"] = d.noteTags || ""; return row; });
   const meds = []; for (const m of live(data.meds)) { meds.push({ Medicine: m.name, Steroid: isSteroid(m.name) ? "yes" : "", Form: m.form || "", Dose: m.dose || "", "How often": m.freq || "", From: m.start || "", To: m.stop || "", "Why stopped": m.why || "", Note: m.note || "" }); for (const c of m.changes || []) meds.push({ Medicine: m.name, Steroid: isSteroid(m.name) ? "yes" : "", Form: m.form || "", Dose: c.dose || "", "How often": c.freq || "", From: c.from, To: "", "Why stopped": "", Note: "dose change" }); }
-  const tests = live(data.tests).sort((a, b) => (a.date < b.date ? -1 : 1)).map((t) => ({ Date: t.date, Test: t.name, Value: t.value, Sign: t.sign || "", Unit: t.unit, Source: t.source || "" }));
   const hist = timelineItems().filter((x) => !x.auto).map((m) => ({ When: m.when, What: m.title, Details: m.desc }));
   const p = data.profile, ab = [{ Field: "Diagnosed", Value: p.diagYear || "" }, { Field: "Extent now", Value: p.extentNow || "" }, { Field: "Furthest extent", Value: p.extentMax || "" }, { Field: "Other symptoms ever", Value: (p.symptomsEver || []).join(", ") }];
   const wb = XLSX.utils.book_new();
-  for (const [n, rows] of [["Days", days], ["Medicines", meds], ["Tests", tests], ["History", hist], ["About", ab]]) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ "(empty)": "" }]), n);
+  for (const [n, rows] of [["Days", days], ["Medicines", meds], ["History", hist], ["About", ab]]) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ "(empty)": "" }]), n);
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   shareOrDownload(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `gut-log-${todayIso()}.xlsx`);
 }

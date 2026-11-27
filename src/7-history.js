@@ -33,8 +33,8 @@ function lifeStrip(w = 360) {
   const y0 = Math.floor(Math.min(...years)), y1 = Math.ceil(nowY + .01), L = 8, R = 8, x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R);
   let s = `<rect x="${x(data.profile.diagYear ? +data.profile.diagYear : y0)}" y="44" width="${x(nowY) - x(data.profile.diagYear ? +data.profile.diagYear : y0)}" height="16" rx="3" fill="var(--ok)" opacity=".55"/>`;
   for (const f of live(data.flares)) {
-    const sv = Math.max(1, SEV.indexOf(f.sev) + 1) || 2, a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY, h = [0, 26, 34, 44][sv];
-    s += `<rect x="${x(a)}" y="${52 - h / 2}" width="${Math.max(4, x(b) - x(a))}" height="${h}" rx="3" fill="${SC[sv]}"/>`;
+    const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY;
+    s += `<rect x="${x(a)}" y="34" width="${Math.max(4, x(b) - x(a))}" height="36" rx="3" fill="var(--mod)"/>`;
   }
   for (const m of live(data.moments)) {
     if (m.type === "colonoscopy") s += `<path d="M${x(roughYear(m.when))} 82l6 7-6 7-6-7z" fill="var(--fg)"/>`;
@@ -61,7 +61,7 @@ function renderHistory() {
   <div class="card"><div class="row"><div class="label">About my colitis</div><button class="btn small" data-act="profileEdit">Edit</button></div>
     <div class="kv">${profileRows().map(([k, t, v, a]) => `<div><span class="ki">${S("0 0 24 24", I[k], stroke)}</span><div style="min-width:0"><div class="sub">${t}${a ? '<span class="auto">auto</span>' : ""}</div><div style="font-weight:500">${esc(v)}</div></div></div>`).join("")}</div>
     <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and the moments below.</div></div>
-  ${strip ? `<div class="card"><div class="label">At a glance</div><div class="wide">${strip}</div><div class="legend"><span><i class="s0" style="opacity:.55"></i>Calm</span><span><i class="s1"></i>Mild flare</span><span><i class="s2"></i>Flare</span><span><i class="s3"></i>Severe</span><span>◆ Colonoscopy</span></div></div>` : ""}
+  ${strip ? `<div class="card"><div class="label">At a glance</div><div class="wide">${strip}</div><div class="legend"><span><i class="s0" style="opacity:.55"></i>Calm</span><span><i class="s2"></i>Flare</span><span>◆ Colonoscopy</span></div></div>` : ""}
   <div class="card"><div class="label">Key moments</div>
     ${items.length ? `<div class="tl">${items.map((m) => `<div class="ev" style="--c:${m.c}" ${m.act}><div class="ic"><span>${ico(m.ic)}</span></div><div class="body"><div class="yr">${esc(m.when)}</div><div class="t">${esc(m.title)}</div>${m.desc ? `<div class="d">${esc(m.desc)}</div>` : ""}</div></div>`).join("")}</div>` : `<div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays.</div>`}
     <button class="btn" data-act="momentAdd">+ Add a moment (rough date is fine)</button>

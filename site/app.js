@@ -675,8 +675,8 @@ function lifeStrip(w = 360) {
   const y0 = Math.floor(Math.min(...years)), y1 = Math.ceil(nowY + .01), L = 8, R = 8, x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R);
   let s = `<rect x="${x(data.profile.diagYear ? +data.profile.diagYear : y0)}" y="44" width="${x(nowY) - x(data.profile.diagYear ? +data.profile.diagYear : y0)}" height="16" rx="3" fill="var(--ok)" opacity=".55"/>`;
   for (const f of live(data.flares)) {
-    const sv = Math.max(1, SEV.indexOf(f.sev) + 1) || 2, a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY, h = [0, 26, 34, 44][sv];
-    s += `<rect x="${x(a)}" y="${52 - h / 2}" width="${Math.max(4, x(b) - x(a))}" height="${h}" rx="3" fill="${SC[sv]}"/>`;
+    const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY;
+    s += `<rect x="${x(a)}" y="34" width="${Math.max(4, x(b) - x(a))}" height="36" rx="3" fill="var(--mod)"/>`;
   }
   for (const m of live(data.moments)) {
     if (m.type === "colonoscopy") s += `<path d="M${x(roughYear(m.when))} 82l6 7-6 7-6-7z" fill="var(--fg)"/>`;
@@ -703,7 +703,7 @@ function renderHistory() {
   <div class="card"><div class="row"><div class="label">About my colitis</div><button class="btn small" data-act="profileEdit">Edit</button></div>
     <div class="kv">${profileRows().map(([k, t, v, a]) => `<div><span class="ki">${S("0 0 24 24", I[k], stroke)}</span><div style="min-width:0"><div class="sub">${t}${a ? '<span class="auto">auto</span>' : ""}</div><div style="font-weight:500">${esc(v)}</div></div></div>`).join("")}</div>
     <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and the moments below.</div></div>
-  ${strip ? `<div class="card"><div class="label">At a glance</div><div class="wide">${strip}</div><div class="legend"><span><i class="s0" style="opacity:.55"></i>Calm</span><span><i class="s1"></i>Mild flare</span><span><i class="s2"></i>Flare</span><span><i class="s3"></i>Severe</span><span>◆ Colonoscopy</span></div></div>` : ""}
+  ${strip ? `<div class="card"><div class="label">At a glance</div><div class="wide">${strip}</div><div class="legend"><span><i class="s0" style="opacity:.55"></i>Calm</span><span><i class="s2"></i>Flare</span><span>◆ Colonoscopy</span></div></div>` : ""}
   <div class="card"><div class="label">Key moments</div>
     ${items.length ? `<div class="tl">${items.map((m) => `<div class="ev" style="--c:${m.c}" ${m.act}><div class="ic"><span>${ico(m.ic)}</span></div><div class="body"><div class="yr">${esc(m.when)}</div><div class="t">${esc(m.title)}</div>${m.desc ? `<div class="d">${esc(m.desc)}</div>` : ""}</div></div>`).join("")}</div>` : `<div class="empty-note">Nothing yet. Add your diagnosis, colonoscopies, flares and hospital stays.</div>`}
     <button class="btn" data-act="momentAdd">+ Add a moment (rough date is fine)</button>
@@ -865,7 +865,7 @@ function reportHtml() {
     ["Medicines that failed", fm.length ? fm.map((m) => `${m.name}: ${m.why.toLowerCase()}${m.note ? ", " + m.note : ""} (${fmtRough(m.stop)})`).join(". ") : "None recorded"],
     ["Steroid courses ever", stc.all.length ? `${stc.all.length} (${stc.all.map((m) => m.name.toLowerCase() + " " + (m.start || "").slice(0, 4)).join(", ")}) · ${stc.recent.length} in the last 12 months` : "None recorded"],
     ["Other symptoms ever", (p.symptomsEver || []).join(", ") || "None recorded"]])}
-  ${strip ? `<h2>At a glance</h2>${strip}<div class="legend"><span><i style="background:${SC_HEX[0]};opacity:.55"></i>Calm</span><span><i style="background:${SC_HEX[1]}"></i>Mild flare</span><span><i style="background:${SC_HEX[2]}"></i>Flare</span><span><i style="background:${SC_HEX[3]}"></i>Severe</span><span>◆ Colonoscopy</span></div>` : ""}
+  ${strip ? `<h2>At a glance</h2>${strip}<div class="legend"><span><i style="background:${SC_HEX[0]};opacity:.55"></i>Calm</span><span><i style="background:${SC_HEX[2]}"></i>Flare</span><span>◆ Colonoscopy</span></div>` : ""}
   ${gantt ? `<h2>Medicines over time</h2>${gantt}` : ""}
   <div class="two"><div><h2>Key moments</h2>${moments.length ? `<table>${moments.map((m) => `<tr><td style="white-space:nowrap">${esc(m.when)}</td><td>${esc(m.title)}${m.desc ? ": " + esc(m.desc) : ""}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}</div>
   <div><h2>Every medicine</h2>${allMeds.length ? `<table><tr><th>Medicine</th><th>Dose</th><th>Dates</th><th>Outcome</th></tr>${allMeds.map((m) => `<tr><td>${esc(m.name)}${isSteroid(m.name) ? " (steroid)" : ""}</td><td>${esc([m.dose, m.freq].filter(Boolean).join(", "))}${(m.changes || []).map((c) => `<br>→ ${esc([c.dose, c.freq].filter(Boolean).join(", "))} from ${esc(fmtRough(c.from))}`).join("")}</td><td>${esc(fmtRough(m.start))} to ${m.stop ? esc(fmtRough(m.stop)) : "now"}</td><td>${m.stop ? esc([m.why, m.note].filter(Boolean).join(": ") || "Stopped") : "Taking"}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}</div></div>

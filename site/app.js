@@ -403,32 +403,54 @@ function steroidCourses() {
   const recent = list.filter((m) => !m.stop || roughSort(m.stop) >= roughSort(cutoff) || roughSort(m.start) >= roughSort(cutoff));
   return { all: list, recent };
 }
-function medGantt(w = 360) {
+/* ppy = pixels per year: 0 fits everything in w; bigger values make a wider chart that scrolls sideways */
+function medGantt(w = 360, ppy = 0) {
   const meds = live(data.meds).filter((m) => m.start);
+  medGantt.names = [];
   if (!meds.length) return "";
   const names = [...new Set(meds.sort((a, b) => roughSort(a.start) < roughSort(b.start) ? -1 : 1).map((m) => m.name))];
   const flares = live(data.flares).filter((f) => f.start), moms = live(data.moments).filter((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
   const nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
-  const top = flares.length || moms.length ? 24 : 0;
-  const L = 8, R = 8, x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R), rowH = 29, H = top + names.length * rowH + 30;
+  const L = 8, R = 8;
+  if (ppy) w = Math.max(w, Math.round((y1 - y0) * ppy) + L + R);
+  const months = ppy >= 150, top = flares.length || moms.length ? 24 : 0, foot = months ? 34 : 22;
+  const x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R), rowH = 29, H = top + names.length * rowH + 8 + foot;
+  const gy = H - foot;
   let s = "";
   /* flares as orange bands behind every medicine, colonoscopies and hospital stays as marks on top */
-  for (const f of flares) { const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${H - 24}" fill="var(--mod)" opacity=".2"/>`; }
+  for (const f of flares) { const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${gy - 2}" fill="var(--mod)" opacity=".2"/>`; }
   for (const m of moms) {
     const cx = x(roughYear(m.when));
     if (m.type === "colonoscopy") s += `<path d="M${cx} 5l6 7-6 7-6-7z" fill="var(--fg)"/>`;
     else s += `<g transform="translate(${cx - 8} 3)">${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="16" height="16" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
   }
-  const step = y1 - y0 > 12 ? 2 : 1;
-  for (let yr = y0; yr <= y1; yr += step) s += `<line x1="${x(yr)}" x2="${x(yr)}" y1="4" y2="${H - 22}" stroke="var(--line)"/><text x="${x(yr)}" y="${H - 6}" font-size="9.5" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${String(yr).slice(2)}</text>`;
+  const mono = 'font-family="ui-monospace,Menlo,monospace"';
+  if (months) {
+    for (let yr = y0; yr < y1; yr++) for (let mo = 0; mo < 12; mo++) {
+      const xx = x(yr + mo / 12), mid = x(yr + (mo + .5) / 12);
+      s += `<line x1="${xx}" x2="${xx}" y1="4" y2="${gy}" stroke="var(--line)" ${mo ? 'opacity=".45"' : ""}/>`;
+      s += `<text x="${mid}" y="${gy + 12}" font-size="9" text-anchor="middle" fill="var(--muted)" ${mono}>${ppy >= 260 ? MONTHS[mo].slice(0, ppy >= 420 ? 3 : 1) : ""}</text>`;
+      if (!mo) s += `<text x="${xx + 2}" y="${gy + 27}" font-size="10" font-weight="600" fill="var(--fg)" ${mono}>${yr}</text>`;
+    }
+    s += `<line x1="${x(y1)}" x2="${x(y1)}" y1="4" y2="${gy}" stroke="var(--line)"/>`;
+  } else {
+    const step = (w - L - R) / (y1 - y0) < 22 ? 2 : 1;
+    for (let yr = y0; yr <= y1; yr += step) s += `<line x1="${x(yr)}" x2="${x(yr)}" y1="4" y2="${gy}" stroke="var(--line)"/><text x="${x(yr)}" y="${H - 6}" font-size="9.5" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)" ${mono}>${ppy ? yr : String(yr).slice(2)}</text>`;
+  }
+  const today = x(nowY); s += `<line x1="${today}" x2="${today}" y1="4" y2="${gy}" stroke="var(--accent)" stroke-dasharray="3 3"/>`;
   names.forEach((n, i) => {
     const yy = top + 8 + i * rowH, ms = meds.filter((m) => m.name === n), st = isSteroid(n);
     const why = ms.filter((m) => m.stop && m.why && m.why !== "Course finished").map((m) => m.why.toLowerCase()).slice(-1)[0];
-    s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)">${esc(n)}${st ? ' <tspan fill="var(--muted)" font-weight="400">· steroid</tspan>' : ""}${why ? ` <tspan fill="var(--muted)" font-weight="400">· ${esc(why)}</tspan>` : ""}</text>`;
-    ms.forEach((m) => { const a = roughYear(m.start), b = m.stop ? roughYear(m.stop) : nowY; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/>`; });
+    const label = `${esc(n)}${st ? ' <tspan fill="var(--muted)" font-weight="400">· steroid</tspan>' : ""}${why ? ` <tspan fill="var(--muted)" font-weight="400">· ${esc(why)}</tspan>` : ""}`;
+    /* zoomed in, names are laid over the chart on the left so they stay put while it scrolls */
+    if (ppy) medGantt.names.push({ y: yy - 3, label });
+    else s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)">${label}</text>`;
+    ms.forEach((m) => { const a = roughYear(m.start), b = m.stopDay ? roughYear(m.stopDay) : m.stop ? roughYear(m.stop) : nowY; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/>`; });
   });
-  return S(`0 0 ${w} ${H}`, s, `style="width:100%;min-width:340px;height:auto"`);
+  return S(`0 0 ${w} ${H}`, s, ppy ? `width="${w}" height="${H}" style="display:block;max-width:none"` : `style="width:100%;min-width:340px;height:auto"`);
 }
+const ZOOMS = [["Everything", 0], ["Years", 70], ["Months", 300]];
+let medZoom = LS.get("gl.zoom", 0);
 function renderMeds() {
   const cur = currentMeds(), past = pastMeds(), st = steroidCourses();
   const yrs = st.all.map((m) => (m.start || "").slice(0, 4)).filter(Boolean);
@@ -437,10 +459,11 @@ function renderMeds() {
     ${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}
   </div>
   <button class="btn primary" data-act="medAdd">+ Add medicine</button>
-  ${live(data.meds).length ? `<div class="card"><div class="label">Every medicine${data.profile.diagYear ? " since " + esc(data.profile.diagYear) : ""}</div><div class="wide">${medGantt()}</div>${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:var(--mod);opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span><b style="color:var(--sev)">✚</b> Hospital stay / surgery</span></div>` : ""}
+  ${live(data.meds).length ? `<div class="card"><div class="label">Every medicine${data.profile.diagYear ? " since " + esc(data.profile.diagYear) : ""}</div><div class="seg" id="zoomSeg" style="margin:2px 0 4px">${ZOOMS.map(([l, v]) => `<button data-zoom="${v}" aria-pressed="${v === medZoom}">${l}</button>`).join("")}</div><div style="position:relative"><div class="wide" id="ganttBox">${medGantt(360, medZoom)}</div>${medGantt.names.map((n) => `<svg class="gname" style="top:${n.y}px" height="16" width="300"><text x="4" y="12" font-size="11" font-weight="600" fill="var(--fg)" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">${n.label}</text></svg>`).join("")}</div>${medZoom ? `<div class="sub">Swipe the chart sideways to go back in time.</div>` : ""}${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:var(--mod);opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span><b style="color:var(--sev)">✚</b> Hospital stay / surgery</span></div>` : ""}
     ${past.length ? `<div class="row" style="margin-top:4px"><div class="label">Tried before</div><span class="sub">Tap one to edit</span></div><div>${past.map((m) => `<div class="tr" data-med="${m.id}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stop))}</span></div><div class="sub">${esc(doseText(m))}</div><div class="sub" style="color:var(--fg)">${esc([m.why, m.note].filter(Boolean).join(": ") || "Reason not set")}${isSteroid(m.name) ? " · steroid" : ""}</div></div></div>`).join("")}</div>` : ""}</div>` : ""}
   <div class="card"><div class="row"><div class="label">Steroid courses</div><span class="sub">counted automatically</span></div>
     <div class="row" style="justify-content:flex-start"><div class="count" style="color:var(--mild)">${st.recent.length}</div><div class="grow sub">in the last 12 months · ${st.all.length} ever${yrs.length ? " (" + yrs.join(", ") + ")" : ""}. Prednisolone, budesonide, hydrocortisone and similar are recognised as steroids.</div></div></div>`;
+  const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth;
 }
 function medForm(m) {
   const now = !m || !m.stop;
@@ -1289,6 +1312,7 @@ document.addEventListener("click", (e) => {
   const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentForm(x); return; }
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareForm(x); return; }
   const qd = e.target.closest("[data-qdel]"); if (qd) { e.preventDefault(); const q = byId(data.questions, qd.dataset.qdel); if (q) { q.del = true; stamp(q); save(); renderDoctor(); } return; }
+  const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); const y = window.scrollY; renderMeds(); window.scrollTo(0, y); return; }
   const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });

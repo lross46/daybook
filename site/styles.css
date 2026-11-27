@@ -93,8 +93,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .found .fr{display:grid;grid-template-columns:1fr 70px 52px;gap:6px;align-items:center;font-size:13.5px}
 .found input,.found select,.addsheet textarea,.addsheet input,.addsheet select{font:inherit;font-size:14px;width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--sunk);color:var(--fg)}
 .shot{border-radius:12px;background:var(--sunk);border:1px solid var(--line);padding:10px;font-size:12px;color:var(--muted);font-family:var(--f-data);line-height:1.6}
+html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
 .noteBtn{align-self:flex-start;background:none;border:0;color:var(--accent);font-weight:600;font-size:13.5px;padding:2px 0}
-.note{font:inherit;font-size:14px;width:100%;min-height:64px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--sunk);color:var(--fg);resize:vertical}
+.note{font:inherit;font-size:16px;width:100%;min-height:64px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--sunk);color:var(--fg);resize:vertical}
 .days{width:100%;border-collapse:collapse;font-size:12.5px}
 .days th{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:4px}
 .days td{padding:6px 4px;border-top:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}

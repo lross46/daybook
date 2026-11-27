@@ -1237,6 +1237,9 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
 
+/* No pinch or double-tap zoom (iPhone ignores the viewport setting in Safari, so block the gestures too). */
+["gesturestart", "gesturechange"].forEach((t) => document.addEventListener(t, (e) => e.preventDefault()));
+
 /* ---------- start ---------- */
 render();
 setSync(connected() ? (dirty ? "ok" : "ok") : "off");

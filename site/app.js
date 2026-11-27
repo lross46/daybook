@@ -745,27 +745,20 @@ function renderDoctor() {
   <div class="card"><div class="row"><div class="grow"><div class="label">IBD helpline</div>${hl.number ? `<div class="count" style="font-size:22px;user-select:all">${esc(hl.number)}</div>${hl.hours ? `<div class="sub">${esc(hl.hours)}</div>` : ""}` : `<div class="sub">Add your IBD team's helpline number.</div>`}</div>
     ${hl.number ? `<a class="btn" href="tel:${esc(hl.number.replace(/[^\d+]/g, ""))}" style="display:flex;align-items:center;gap:6px;background:var(--ok);color:#fff;border-color:var(--ok)">${S("0 0 24 24", I.phone, `${stroke} width="18" height="18"`)}Call</a>` : ""}</div>
     <button class="linkbtn" data-act="helplineEdit">${hl.number ? "Edit number" : "+ Add number"}</button></div>
-  <div class="card"><div class="row"><div class="label">My details for the PDF</div><button class="btn small" data-act="meEdit">Edit</button></div>
-    <div class="kv mini"><div><span class="sub">Name</span><span>${esc(me.name || "Not set")}</span></div><div><span class="sub">Date of birth</span><span>${me.dob ? esc(fmtDate(me.dob)) : "Not set"}</span></div><div><span class="sub">NHS number</span><span>${esc(me.nhs || "Not set")}</span></div></div>
-    <div class="sub">Kept only inside your locked data. Printed on the PDF, never sent anywhere else.</div></div>
+  <button class="card about" data-act="meEdit"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>My details</b><span class="sub">${esc([me.name, me.nhs && "NHS " + me.nhs].filter(Boolean).join(" · ") || "Tap to add name, date of birth and NHS number")}</span></span><span class="chev" aria-hidden="true">›</span></button>
   <div class="card"><div class="row"><div class="label">Questions for next visit</div><span class="sub">${qs.filter((q) => !q.done).length} to ask</span></div>
     <div class="f" id="qs">${qs.map((q) => `<label class="qrow"><input type="checkbox" data-q="${q.id}" ${q.done ? "checked" : ""}><span style="${q.done ? "text-decoration:line-through;color:var(--muted)" : ""}">${esc(q.text)}</span><button class="x" data-qdel="${q.id}" aria-label="Delete question">×</button></label>`).join("")}</div>
     <form id="qForm" class="row" style="gap:8px"><input id="qIn" class="in" placeholder="Type a question"><button class="btn small" style="padding:10px 14px">Add</button></form>
     ${qs.some((q) => q.done) ? `<button class="linkbtn" data-act="qClear">Remove ticked questions</button>` : ""}</div>
-  <div class="label" style="margin-top:6px">Report for my IBD team</div>
+  <div class="card rep"><div class="label">Report for my IBD team</div>
   <div class="seg" id="period">${PERIODS.map(([l, m]) => `<button data-period="${m}" aria-pressed="${m === period}">${l}</button>`).join("")}</div>
-  <div class="card rep">
-    <div class="sub">The PDF comes out in this order:</div>
-    <div class="sec"><span class="num">1</span><div class="grow"><div class="name">Full history <span class="sub">· always complete</span></div><div class="sub">About my colitis, at a glance, key moments, every medicine</div></div></div>
-    <div class="sec"><span class="num">2</span><div class="grow"><div class="name">Summary for the period</div><div class="sub">${r.label} · ${r.len}</div></div></div>
     ${st.logged ? `<div class="row"><div class="grow"><div class="label">Colitis activity (SCCAI)</div><div class="sub">Worked out from your daily log${st.latestDay !== todayIso() ? ", last logged " + fmtDay(st.latestDay) : ""}.</div></div><div style="text-align:right"><div class="count" style="color:${SC[lvl(st.latest)]}">${st.latest}</div><div class="sub">${STATE[lvl(st.latest)].toLowerCase()}</div></div></div>
     ${sccaiBars(r.keys)}
     <div class="kpis">${kpi("toilet", st.avgStools.toFixed(1), "stools a day", "var(--stool)")}${kpi("drop", st.blood, "days with blood", "var(--blood)")}${kpi("bolt", st.urg, "days with urgency", "var(--mod)")}${kpi("moon", st.nights, "nights woken", "var(--med2)")}${kpi("flag", st.flares.length, st.flares.length === 1 ? "flare" : "flares", "var(--mod)")}${kpi("pill", currentMeds().length, "current medicines", "var(--accent)")}</div>
-    <div class="sub">${st.logged} of ${r.keys.length} days logged. Plus current medicines, steroids and your questions.</div>` : `<div class="empty-note">No days logged in this period yet.</div>`}
-    <div class="sec"><span class="num">3</span><div class="grow"><div class="name">Day by day</div><div class="sub">Every logged day in the period, newest first</div></div></div>
+    <div class="sub">${st.logged} of ${r.keys.length} days logged.</div>` : `<div class="empty-note">No days logged in this period yet.</div>`}
   </div>
   <div class="btns"><button class="btn primary" data-act="pdf">Save PDF</button><button class="btn primary" data-act="excel">Save Excel</button></div>
-  <div class="sub" style="text-align:center">Save PDF opens your phone's print screen: choose Share or Save to Files. Excel has all your data, for your own charts.</div>
+  <div class="sub" style="text-align:center">Excel has all your data, for your own charts.</div>
   <div class="sub" style="text-align:center">A personal log. It doesn't give medical advice.</div>`;
 }
 document.addEventListener("submit", (e) => {
@@ -780,10 +773,10 @@ function helplineEdit() {
 }
 function meEdit() {
   const me = data.me || {};
-  openSheet(`${sheetHead("My details for the PDF", "Stored only inside your locked data")}<label class="f"><span>Name</span><input id="meName" autocomplete="off" value="${esc(me.name || "")}"></label><label class="f"><span>Date of birth</span><input id="meDob" type="date" value="${esc(me.dob || "")}"></label><label class="f"><span>NHS number</span><input id="meNhs" inputmode="numeric" autocomplete="off" value="${esc(me.nhs || "")}" placeholder="10 digits"></label><button class="btn primary" data-act="meSave">Save</button>`);
+  openSheet(`${sheetHead("My details", "Stored only inside your locked data")}<label class="f"><span>Name</span><input id="meName" autocomplete="off" value="${esc(me.name || "")}"></label><label class="f"><span>Date of birth</span><input id="meDob" type="date" value="${esc(me.dob || "")}"></label><label class="f"><span>NHS number</span><input id="meNhs" inputmode="numeric" autocomplete="off" value="${esc(me.nhs || "")}" placeholder="10 digits"></label><button class="btn primary" data-act="meSave">Save</button>`);
 }
 
-/* ---------- PDF (via the phone's print screen) ---------- */
+/* ---------- PDF report ---------- */
 function reportHtml() {
   const r = periodRange(), st = periodStats(r), me = data.me || {}, p = data.profile;
   const pr = (rows) => `<table>${rows.map(([a, b]) => `<tr><td class="muted" style="width:32%">${a}</td><td>${esc(b)}</td></tr>`).join("")}</table>`;

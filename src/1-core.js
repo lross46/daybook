@@ -88,10 +88,13 @@ const inFlare = (k) => live(data.flares).some((f) => roughLo(f.start) <= k && (!
 function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2400); }
 let sheetOnClose = null;
 function openSheet(html, onClose) {
-  const s = $("#sheet"); s.innerHTML = `<div class="grab"></div>${html}`; s.hidden = false; $("#scrim").hidden = false; s.scrollTop = 0; sheetOnClose = onClose || null;
+  const s = $("#sheet"); s.dataset.kind = ""; s.innerHTML = `<div class="grab"></div>${html}`; s.hidden = false; $("#scrim").hidden = false; s.scrollTop = 0; sheetOnClose = onClose || null;
 }
 /* after saving an edit opened from a details view, go back to that view (not the tab) */
 let reopen = null;
+/* a details view opened from a list sheet (e.g. Steroid courses): closing it goes back to that list */
+let sheetBack = null;
+function closeOrBack() { reopen = null; const f = sheetBack; sheetBack = null; closeSheet(); if (f) f(); }
 function doneEdit() { const f = reopen, y = window.scrollY; reopen = null; closeSheet(); render(); window.scrollTo(0, y); if (f) f(); }
 function closeSheet() { $("#sheet").hidden = true; $("#scrim").hidden = true; $("#sheet").innerHTML = ""; const f = sheetOnClose; sheetOnClose = null; if (f) f(); }
 const sheetHead = (title, sub = "") => `<div class="row"><div><h2>${esc(title)}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div><button class="btn small" data-act="close">Close</button></div>`;

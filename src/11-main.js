@@ -1,6 +1,6 @@
 /* ---------- actions ---------- */
 const byId = (arr, id) => arr.find((x) => x.id === id);
-function tomb(arr, id, msg) { reopen = null; const x = byId(arr, id); if (x) { x.del = true; stamp(x); } save(msg); closeSheet(); render(); }
+function tomb(arr, id, msg) { reopen = null; sheetBack = null; const x = byId(arr, id); if (x) { x.del = true; stamp(x); } save(msg); closeSheet(); render(); }
 let xlsxP = null;
 function loadXlsx() {
   if (window.XLSX) return Promise.resolve();
@@ -15,7 +15,7 @@ function confirmTap(el) {
 }
 const NEEDS_CONFIRM = new Set(["medDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
 const ACTS = {
-  close: () => { reopen = null; closeSheet(); },
+  close: () => closeOrBack(),
   settings: () => settingsSheet(),
   syncSave: () => syncSave(),
   syncOff: () => syncOff(),
@@ -75,10 +75,10 @@ document.addEventListener("click", (e) => {
     if (NEEDS_CONFIRM.has(a.dataset.act) && !confirmTap(a)) return;
     e.preventDefault(); ACTS[a.dataset.act](a); return;
   }
-  const t = e.target.closest("[data-tab]"); if (t) { reopen = null; if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
-  if (e.target.id === "scrim") { reopen = null; closeSheet(); return; }
+  const t = e.target.closest("[data-tab]"); if (t) { reopen = null; sheetBack = null; if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
+  if (e.target.id === "scrim") { closeOrBack(); return; }
   const day = e.target.closest("[data-day]"); if (day) { viewDay = day.dataset.day; go("today"); return; }
-  const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medView(m); return; }
+  const med = e.target.closest("[data-med]"); if (med) { sheetBack = !$("#sheet").hidden && $("#sheet").dataset.kind === "steroids" ? steroidOpen : null; const m = byId(data.meds, med.dataset.med); if (m) medView(m); return; }
   const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
   const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentView(x); return; }
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareView(x); return; }
@@ -86,7 +86,7 @@ document.addEventListener("click", (e) => {
   const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", b === zm); drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; return; }
   const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }
 });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) { reopen = null; closeSheet(); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeOrBack(); });
 
 /* No pinch or double-tap zoom (iPhone ignores the viewport setting in Safari, so block the gestures too). */
 ["gesturestart", "gesturechange"].forEach((t) => document.addEventListener(t, (e) => e.preventDefault()));
@@ -97,7 +97,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
-  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
+  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
 });
 
 /* ---------- start ---------- */

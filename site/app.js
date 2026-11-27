@@ -88,10 +88,13 @@ const inFlare = (k) => live(data.flares).some((f) => roughLo(f.start) <= k && (!
 function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2400); }
 let sheetOnClose = null;
 function openSheet(html, onClose) {
-  const s = $("#sheet"); s.innerHTML = `<div class="grab"></div>${html}`; s.hidden = false; $("#scrim").hidden = false; s.scrollTop = 0; sheetOnClose = onClose || null;
+  const s = $("#sheet"); s.dataset.kind = ""; s.innerHTML = `<div class="grab"></div>${html}`; s.hidden = false; $("#scrim").hidden = false; s.scrollTop = 0; sheetOnClose = onClose || null;
 }
 /* after saving an edit opened from a details view, go back to that view (not the tab) */
 let reopen = null;
+/* a details view opened from a list sheet (e.g. Steroid courses): closing it goes back to that list */
+let sheetBack = null;
+function closeOrBack() { reopen = null; const f = sheetBack; sheetBack = null; closeSheet(); if (f) f(); }
 function doneEdit() { const f = reopen, y = window.scrollY; reopen = null; closeSheet(); render(); window.scrollTo(0, y); if (f) f(); }
 function closeSheet() { $("#sheet").hidden = true; $("#scrim").hidden = true; $("#sheet").innerHTML = ""; const f = sheetOnClose; sheetOnClose = null; if (f) f(); }
 const sheetHead = (title, sub = "") => `<div class="row"><div><h2>${esc(title)}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div><button class="btn small" data-act="close">Close</button></div>`;
@@ -514,6 +517,7 @@ function steroidOpen() {
   openSheet(`${sheetHead("Steroid courses", `${st.recent.length} in the last 12 months · ${st.all.length} ever`)}
     ${st.all.length ? `<div>${st.all.map((m) => `<div class="tr" data-med="${m.id}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${m.stop ? esc(fmtRough(m.stopDay || m.stop)) : "now"}</span></div><div class="sub">${esc([doseText(m) === "Dose not set" ? "" : doseText(m), m.form, m.why, m.note].filter(Boolean).join(" · ") || "No details yet")}${recent.has(m.id) ? ' · <b style="color:var(--mild)">last 12 months</b>' : ""}</div></div></div>`).join("")}</div>
     <div class="sub">Oldest first. Tap one to see it. Prednisolone, budesonide, hydrocortisone and similar count as steroids.</div>` : `<div class="empty-note">No steroid courses yet. Add one with + Add medicine.</div>`}`);
+  $("#sheet").dataset.kind = "steroids";
 }
 function medForm(m) {
   const now = !m || !m.stop;
@@ -1206,7 +1210,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 46</div>
+  <div class="sub">App version 47</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });
@@ -1237,7 +1241,7 @@ function wipe() {
 }
 /* ---------- actions ---------- */
 const byId = (arr, id) => arr.find((x) => x.id === id);
-function tomb(arr, id, msg) { reopen = null; const x = byId(arr, id); if (x) { x.del = true; stamp(x); } save(msg); closeSheet(); render(); }
+function tomb(arr, id, msg) { reopen = null; sheetBack = null; const x = byId(arr, id); if (x) { x.del = true; stamp(x); } save(msg); closeSheet(); render(); }
 let xlsxP = null;
 function loadXlsx() {
   if (window.XLSX) return Promise.resolve();
@@ -1252,7 +1256,7 @@ function confirmTap(el) {
 }
 const NEEDS_CONFIRM = new Set(["medDelete", "momentDelete", "flareDelete", "clearDay", "wipe"]);
 const ACTS = {
-  close: () => { reopen = null; closeSheet(); },
+  close: () => closeOrBack(),
   settings: () => settingsSheet(),
   syncSave: () => syncSave(),
   syncOff: () => syncOff(),
@@ -1312,10 +1316,10 @@ document.addEventListener("click", (e) => {
     if (NEEDS_CONFIRM.has(a.dataset.act) && !confirmTap(a)) return;
     e.preventDefault(); ACTS[a.dataset.act](a); return;
   }
-  const t = e.target.closest("[data-tab]"); if (t) { reopen = null; if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
-  if (e.target.id === "scrim") { reopen = null; closeSheet(); return; }
+  const t = e.target.closest("[data-tab]"); if (t) { reopen = null; sheetBack = null; if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
+  if (e.target.id === "scrim") { closeOrBack(); return; }
   const day = e.target.closest("[data-day]"); if (day) { viewDay = day.dataset.day; go("today"); return; }
-  const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medView(m); return; }
+  const med = e.target.closest("[data-med]"); if (med) { sheetBack = !$("#sheet").hidden && $("#sheet").dataset.kind === "steroids" ? steroidOpen : null; const m = byId(data.meds, med.dataset.med); if (m) medView(m); return; }
   const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
   const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentView(x); return; }
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareView(x); return; }
@@ -1323,7 +1327,7 @@ document.addEventListener("click", (e) => {
   const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", b === zm); drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; return; }
   const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }
 });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) { reopen = null; closeSheet(); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeOrBack(); });
 
 /* No pinch or double-tap zoom (iPhone ignores the viewport setting in Safari, so block the gestures too). */
 ["gesturestart", "gesturechange"].forEach((t) => document.addEventListener(t, (e) => e.preventDefault()));
@@ -1334,7 +1338,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
-  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
+  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
 });
 
 /* ---------- start ---------- */

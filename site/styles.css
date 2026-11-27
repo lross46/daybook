@@ -81,6 +81,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .tags button{background:var(--sunk);border:2px solid transparent;border-radius:14px;padding:8px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
 .tags button svg{width:26px;height:26px;stroke:currentColor}
 .tags button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
+/* last row always fills the width */
+.tags button:last-child:nth-child(4n+1){grid-column:span 4}
+.tags button:last-child:nth-child(4n+2){grid-column:span 3}
+.tags button:last-child:nth-child(4n+3){grid-column:span 2}
 .addgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .addgrid button{background:var(--sunk);border:2px solid transparent;border-radius:16px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
 .addgrid button svg{width:30px;height:30px;stroke:var(--accent);margin-bottom:4px}

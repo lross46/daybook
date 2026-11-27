@@ -51,7 +51,7 @@ const isSteroid = (name) => STEROIDS.some((s) => (name || "").toLowerCase().incl
 const KNOWN_MEDS = ["Mesalazine", "Sulfasalazine", "Balsalazide", "Olsalazine", "Prednisolone", "Budesonide", "Hydrocortisone", "Beclometasone", "Azathioprine", "Mercaptopurine", "Methotrexate", "Ciclosporin", "Tacrolimus", "Infliximab", "Adalimumab", "Golimumab", "Vedolizumab", "Ustekinumab", "Mirikizumab", "Risankizumab", "Guselkumab", "Tofacitinib", "Filgotinib", "Upadacitinib", "Ozanimod", "Etrasimod", "Vitamin D", "Iron", "Folic acid", "Loperamide"];
 const FORMS = ["Tablet", "Rectal", "Injection", "Drip"];
 const WHY = ["Didn't work", "Stopped working", "Side effects", "Course finished", "Switched", "Other"];
-const TAGS = [["lowmood", "Low mood"], ["anxious", "Anxious"], ["stress", "Stress"], ["sleep", "Bad sleep"], ["ill", "Ill / infection"], ["nsaid", "Painkillers"], ["alcohol", "High alcohol"], ["food", "Unusual food"]];
+const TAGS = [["lowmood", "Low mood"], ["anxious", "Anxious / stress"], ["sleep", "Bad sleep"], ["ill", "Ill / infection"], ["alcohol", "High alcohol"], ["food", "Unusual food"], ["othertag", "Other"]];
 const EXTRA = [["joint", "Joints"], ["eye", "Eyes"], ["skin", "Skin"], ["mouth", "Mouth ulcers"]];
 const EXTENT = ["Rectum only", "Left side", "Whole colon"];
 const BLOOD = ["None", "Streaks", "Some", "A lot"];
@@ -94,6 +94,7 @@ const I={
   stress:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
   alcohol:'<path d="M8 3h8l-1 7a3 3 0 0 1-6 0zM12 13v7M8 21h8"/>',
   spicy:'<path d="M14 6c4 1 6 5 4 10s-9 6-12 3c4 0 7-3 7-8 0-2 0-4 1-5zM14 6c0-2 1-3 3-3"/>',
+  othertag:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   food:'<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1-3 4-3 8h3v10"/>',
   dairy:'<path d="M8 2h8M9 2v3l-2 4v13h10V9l-2-4V2M7 13h10"/>',
   coffee:'<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h1a3 3 0 0 1 0 6h-1M8 2v3M12 2v3"/>',

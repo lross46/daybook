@@ -106,6 +106,7 @@ function listToggle(el, open) {
   const l = $("#evList"); if (!l) return;
   l.hidden = open === undefined ? !l.hidden : !open;
   const b = el || $('[data-act="listToggle"]'); b.setAttribute("aria-expanded", !l.hidden);
+  if (b.classList.contains("fold")) { b.querySelector(".chev").style.transform = l.hidden ? "" : "rotate(90deg)"; return; }
   b.firstChild.textContent = l.hidden ? `Show all events (${$$("#evList [data-fi]").length}) ` : "Hide the list ";
 }
 function profileEdit() {

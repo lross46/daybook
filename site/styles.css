@@ -338,3 +338,8 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .listtog{border:0;background:none;color:var(--accent);font:inherit;font-weight:600;font-size:14px;padding:10px 0 2px;min-height:44px;text-align:left;cursor:pointer}
 .card.about{flex-direction:row;align-items:center;text-align:left}
 .about .grow{align-items:flex-start}
+.medtap{grid-template-columns:36px 1fr;padding:8px 0 0;gap:10px}
+.medtap>svg{width:36px;height:36px}
+.fold{padding:0;background:none}
+.fold .chev{transition:transform .15s}
+#evList .tr:first-child{margin-top:8px}

@@ -99,17 +99,17 @@ let medZoom = LS.get("gl.zoom", 0);
 function renderMeds() {
   const cur = currentMeds(), past = pastMeds(), st = steroidCourses();
   const yrs = st.all.map((m) => (m.start || "").slice(0, 4)).filter(Boolean);
+  const names = [...new Set(past.map((m) => m.name))];
   $("#main").innerHTML = `<div data-fscope style="display:contents">
+  <button class="btn primary" data-act="medAdd">+ Add medicine</button>
   ${cur.length + past.length > 3 ? findBox("Search medicines") : ""}
   <div class="card" data-fgroup><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="sub">Tap one to change or stop it</span>` : ""}</div>
     ${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.form, m.note, isSteroid(m.name) && "steroid")}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}
   </div>
-  <button class="btn primary" data-act="medAdd">+ Add medicine</button>
   <div class="empty-note" data-fempty hidden>No medicine matches. Try another word.</div>
-  ${past.length ? `<div class="card" data-fgroup><div class="row"><div class="label">Tried before</div><span class="sub">Tap one to edit</span></div><div>${past.map((m) => `<div class="tr" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.why, m.note, fmtRough(m.start), fmtRough(m.stop), isSteroid(m.name) && "steroid")}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stop))}</span></div><div class="sub">${esc(doseText(m))}</div><div class="sub" style="color:var(--fg)">${esc([m.why, m.note].filter(Boolean).join(": ") || "Reason not set")}${isSteroid(m.name) ? " · steroid" : ""}</div></div></div>`).join("")}</div></div>` : ""}
-  <div class="card"><div class="row"><div class="label">Steroid courses</div><span class="sub">counted automatically</span></div>
-    <div class="row" style="justify-content:flex-start"><div class="count" style="color:var(--mild)">${st.recent.length}</div><div class="grow sub">in the last 12 months · ${st.all.length} ever${yrs.length ? " (" + yrs.join(", ") + ")" : ""}. Prednisolone, budesonide, hydrocortisone and similar are recognised as steroids.</div></div></div></div>`;
-  
+  ${past.length ? `<div class="card" data-fgroup><button class="about fold" data-act="listToggle" data-show="${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}" aria-expanded="false"><span class="grow"><b>Tried before (${past.length})</b><span class="sub">${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}</span></span><span class="chev" aria-hidden="true">›</span></button>
+    <div id="evList" hidden>${past.map((m) => `<div class="tr" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.why, m.note, fmtRough(m.start), fmtRough(m.stop), isSteroid(m.name) && "steroid")}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stop))}</span></div><div class="sub">${esc([doseText(m) === "Dose not set" ? "" : doseText(m), m.why, m.note].filter(Boolean).join(" · ") || "Reason not set")}${isSteroid(m.name) ? " · steroid" : ""}</div></div></div>`).join("")}</div></div>` : ""}
+  <div class="card"><div class="row"><div class="label" style="white-space:nowrap">Steroid courses</div><span class="sub" style="text-align:right"><b style="color:var(--mild)">${st.recent.length}</b> in the last 12 months · ${st.all.length} ever${yrs.length ? " (" + yrs.join(", ") + ")" : ""}</span></div></div></div>`;
 }
 function medForm(m) {
   const now = !m || !m.stop;

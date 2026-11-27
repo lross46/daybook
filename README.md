@@ -16,3 +16,7 @@ A private daily log for ulcerative colitis, built as a phone web app.
 `./build.sh` joins `src/*.js` into `site/app.js`. GitHub Actions publishes `site/` to GitHub Pages.
 
 Third-party code in `site/vendor/` keeps its own licence (SheetJS, tesseract.js).
+
+## Licence
+
+© lross46. All rights reserved. No licence is granted to copy, change or redistribute this code.

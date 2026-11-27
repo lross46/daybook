@@ -8,7 +8,7 @@ function timelineCard() {
     <div class="row" id="tlNav"><button class="navbtn" data-tlstep="-1" aria-label="Earlier">‹</button><b id="tlLbl" class="tllbl"></b><button class="navbtn" data-tlstep="1" aria-label="Later">›</button></div>
     <div class="chips layers" role="group" aria-label="Show on the chart">${LAYERS.map(([k, l, sw]) => `<button type="button" data-layer="${k}" aria-pressed="${chartShow[k]}">${sw} ${l}</button>`).join("")}</div>
     <div id="chartWrap"></div>
-    <div class="sub">Tap a bar or mark to open it. Tap the buttons above to show or hide things.</div></div></div>`;
+    <div class="sub">Slide the chart or the strip with your finger, or use the arrows. Tap a bar or mark to open it.</div></div></div>`;
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-layer]"); if (!b) return;
@@ -18,13 +18,13 @@ document.addEventListener("click", (e) => {
 });
 /* zoom windows: how many years each step shows (0 = everything) */
 const TL_ZOOMS = [["All", 0], ["5 yrs", 5], ["1 yr", 1], ["6 mo", .5], ["3 mo", .25], ["1 mo", 1 / 12]];
-let tlZ = LS.get("gl.tlz", 0), tlEnd = null;
+let tlZ = LS.get("gl.tlz", 0), tlEnd = null, tlDrag = null;
 const monthEnd = () => Math.ceil(roughYear(todayIso(), "start") * 12 + .001) / 12;
 function tlWindow() {
   const span = TL_ZOOMS[tlZ][1]; if (!span) return null;
   if (tlEnd == null) tlEnd = monthEnd();
   medGantt(360); if (!medGantt.full) return null; const [f0] = medGantt.full, top = monthEnd();
-  tlEnd = Math.min(Math.max(tlEnd, f0 + span), top); tlEnd = Math.round(tlEnd * 12) / 12;
+  tlEnd = Math.min(Math.max(tlEnd, f0 + span), top); if (!tlDrag || !tlDrag.moved) tlEnd = Math.round(tlEnd * 12) / 12;
   return [tlEnd - span, tlEnd];
 }
 const fmtM = (t) => { const m = Math.round(t * 12); return MONTHS[m % 12] + " " + Math.floor(m / 12); };
@@ -62,3 +62,24 @@ document.addEventListener("click", (e) => {
   if (mm && TL_ZOOMS[tlZ][1]) { const r = mm.getBoundingClientRect(), [f0, f1] = medGantt.full, t = f0 + ((e.clientX - r.left) / r.width * 360 - 4) / 352 * (f1 - f0); tlEnd = t + TL_ZOOMS[tlZ][1] / 2; drawChart(); }
 });
 document.addEventListener("click", (e) => { const j = e.target.closest("[data-jump]"); if (j) jumpTo(+j.dataset.jump); });
+/* slide the chart (or the box on the strip) with a finger; a short tap still opens what's under it */
+document.addEventListener("pointerdown", (e) => {
+  const box = e.target.closest("#ganttBox, #tlMini"); if (!box || !TL_ZOOMS[tlZ][1]) return;
+  tlDrag = { x: e.clientX, end: tlEnd, w: box.getBoundingClientRect().width, mini: box.id === "tlMini", moved: false };
+});
+document.addEventListener("pointermove", (e) => {
+  if (!tlDrag) return; const dx = e.clientX - tlDrag.x;
+  if (!tlDrag.moved && Math.abs(dx) < 8) return;
+  /* once it is a slide (not a tap), keep getting the finger even though the chart is redrawn under it */
+  if (!tlDrag.moved) try { $("#chartWrap").setPointerCapture(e.pointerId); } catch {}
+  tlDrag.moved = true; e.preventDefault();
+  const span = TL_ZOOMS[tlZ][1], full = medGantt.full ? medGantt.full[1] - medGantt.full[0] : span;
+  /* chart: drag right = go back in time; strip: drag the box along */
+  tlEnd = tlDrag.end + (tlDrag.mini ? dx / tlDrag.w * full : -dx / tlDrag.w * span);
+  if (!tlDrag.raf) tlDrag.raf = requestAnimationFrame(() => { if (tlDrag) tlDrag.raf = 0; drawChart(); });
+}, { passive: false });
+const tlDragEnd = () => { if (!tlDrag) return; const moved = tlDrag.moved; tlDrag = null; if (moved) { drawChart(); tlSwallow = Date.now(); } };
+let tlSwallow = 0;
+document.addEventListener("pointerup", tlDragEnd); document.addEventListener("pointercancel", tlDragEnd);
+/* the click that ends a slide shouldn't open a bar or jump */
+document.addEventListener("click", (e) => { if (Date.now() - tlSwallow < 300 && e.target.closest("#ganttBox, #tlMini")) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);

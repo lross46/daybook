@@ -397,3 +397,4 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .tllbl{font-family:var(--f-data);font-size:14px;text-align:center;flex:1}
 #zoomSeg button{font-size:12.5px;padding-left:0;padding-right:0}
 .tlmini{cursor:pointer;border-top:1px solid var(--line);padding-top:6px}
+#ganttBox,#tlMini{touch-action:pan-y;user-select:none;-webkit-user-select:none}

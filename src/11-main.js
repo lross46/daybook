@@ -36,6 +36,7 @@ const ACTS = {
   calNext: () => { const d = parseIso(calMonth + "-01"); d.setMonth(d.getMonth() + 1); const n = iso(d).slice(0, 7); if (n <= todayIso().slice(0, 7)) calMonth = n; renderTrends(); },
   /* Meds */
   medAdd: () => medForm(null),
+  steroidOpen: () => steroidOpen(),
   medSave: (el) => medSave(el.dataset.id),
   medDelete: (el) => tomb(data.meds, el.dataset.id, "Medicine deleted"),
   medDose: (el) => medDose(el.dataset.id),

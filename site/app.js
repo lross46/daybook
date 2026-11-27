@@ -407,13 +407,22 @@ function medGantt(w = 360) {
   const meds = live(data.meds).filter((m) => m.start);
   if (!meds.length) return "";
   const names = [...new Set(meds.sort((a, b) => roughSort(a.start) < roughSort(b.start) ? -1 : 1).map((m) => m.name))];
-  const nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
-  const L = 8, R = 8, x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R), rowH = 29, H = names.length * rowH + 30;
+  const flares = live(data.flares).filter((f) => f.start), moms = live(data.moments).filter((m) => m.when && ["colonoscopy", "hospital", "surgery"].includes(m.type));
+  const nowY = roughYear(todayIso()), y0 = Math.floor(Math.min(...meds.map((m) => roughYear(m.start)), ...flares.map((f) => roughYear(f.start)), ...moms.map((m) => roughYear(m.when)), data.profile.diagYear ? +data.profile.diagYear : 9999)), y1 = Math.ceil(nowY + .01);
+  const top = flares.length || moms.length ? 24 : 0;
+  const L = 8, R = 8, x = (v) => L + (v - y0) / (y1 - y0) * (w - L - R), rowH = 29, H = top + names.length * rowH + 30;
   let s = "";
+  /* flares as orange bands behind every medicine, colonoscopies and hospital stays as marks on top */
+  for (const f of flares) { const a = roughYear(f.start), b = f.end ? roughYear(f.end) : nowY; s += `<rect x="${x(a)}" y="2" width="${Math.max(3, x(b) - x(a))}" height="${H - 24}" fill="var(--mod)" opacity=".2"/>`; }
+  for (const m of moms) {
+    const cx = x(roughYear(m.when));
+    if (m.type === "colonoscopy") s += `<path d="M${cx} 5l6 7-6 7-6-7z" fill="var(--fg)"/>`;
+    else s += `<g transform="translate(${cx - 8} 3)">${S("0 0 24 24", I[m.type === "hospital" ? "hospital" : "cut"], 'width="16" height="16" fill="none" stroke="var(--sev)" stroke-width="2.4"')}</g>`;
+  }
   const step = y1 - y0 > 12 ? 2 : 1;
   for (let yr = y0; yr <= y1; yr += step) s += `<line x1="${x(yr)}" x2="${x(yr)}" y1="4" y2="${H - 22}" stroke="var(--line)"/><text x="${x(yr)}" y="${H - 6}" font-size="9.5" text-anchor="${yr === y0 ? "start" : yr + step > y1 ? "end" : "middle"}" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${String(yr).slice(2)}</text>`;
   names.forEach((n, i) => {
-    const yy = 8 + i * rowH, ms = meds.filter((m) => m.name === n), st = isSteroid(n);
+    const yy = top + 8 + i * rowH, ms = meds.filter((m) => m.name === n), st = isSteroid(n);
     const why = ms.filter((m) => m.stop && m.why && m.why !== "Course finished").map((m) => m.why.toLowerCase()).slice(-1)[0];
     s += `<text x="${L}" y="${yy + 8}" font-size="11" font-weight="600" fill="var(--fg)">${esc(n)}${st ? ' <tspan fill="var(--muted)" font-weight="400">· steroid</tspan>' : ""}${why ? ` <tspan fill="var(--muted)" font-weight="400">· ${esc(why)}</tspan>` : ""}</text>`;
     ms.forEach((m) => { const a = roughYear(m.start), b = m.stop ? roughYear(m.stop) : nowY; s += `<rect x="${x(a)}" y="${yy + 12}" width="${Math.max(4, x(b) - x(a))}" height="10" rx="5" fill="${medColor(m)}"/>`; });
@@ -428,7 +437,7 @@ function renderMeds() {
     ${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}
   </div>
   <button class="btn primary" data-act="medAdd">+ Add medicine</button>
-  ${live(data.meds).length ? `<div class="card"><div class="label">Every medicine${data.profile.diagYear ? " since " + esc(data.profile.diagYear) : ""}</div><div class="wide">${medGantt()}</div>
+  ${live(data.meds).length ? `<div class="card"><div class="label">Every medicine${data.profile.diagYear ? " since " + esc(data.profile.diagYear) : ""}</div><div class="wide">${medGantt()}</div>${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:var(--mod);opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span><b style="color:var(--sev)">✚</b> Hospital stay / surgery</span></div>` : ""}
     ${past.length ? `<div class="row" style="margin-top:4px"><div class="label">Tried before</div><span class="sub">Tap one to edit</span></div><div>${past.map((m) => `<div class="tr" data-med="${m.id}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stop))}</span></div><div class="sub">${esc(doseText(m))}</div><div class="sub" style="color:var(--fg)">${esc([m.why, m.note].filter(Boolean).join(": ") || "Reason not set")}${isSteroid(m.name) ? " · steroid" : ""}</div></div></div>`).join("")}</div>` : ""}</div>` : ""}
   <div class="card"><div class="row"><div class="label">Steroid courses</div><span class="sub">counted automatically</span></div>
     <div class="row" style="justify-content:flex-start"><div class="count" style="color:var(--mild)">${st.recent.length}</div><div class="grow sub">in the last 12 months · ${st.all.length} ever${yrs.length ? " (" + yrs.join(", ") + ")" : ""}. Prednisolone, budesonide, hydrocortisone and similar are recognised as steroids.</div></div></div>`;
@@ -866,7 +875,7 @@ function reportHtml() {
     ["Steroid courses ever", stc.all.length ? `${stc.all.length} (${stc.all.map((m) => m.name.toLowerCase() + " " + (m.start || "").slice(0, 4)).join(", ")}) · ${stc.recent.length} in the last 12 months` : "None recorded"],
     ["Other symptoms ever", (p.symptomsEver || []).join(", ") || "None recorded"]])}
   ${strip ? `<h2>At a glance</h2>${strip}<div class="legend"><span><i style="background:${SC_HEX[0]};opacity:.55"></i>Calm</span><span><i style="background:${SC_HEX[2]}"></i>Flare</span><span>◆ Colonoscopy</span></div>` : ""}
-  ${gantt ? `<h2>Medicines over time</h2>${gantt}` : ""}
+  ${gantt ? `<h2>Medicines over time</h2>${gantt}${live(data.flares).length || live(data.moments).length ? `<div class="legend"><span><i style="background:${SC_HEX[2]};opacity:.35"></i>Flare</span><span>◆ Colonoscopy</span><span style="color:${SC_HEX[3]}">✚ Hospital stay / surgery</span></div>` : ""}` : ""}
   <div class="two"><div><h2>Key moments</h2>${moments.length ? `<table>${moments.map((m) => `<tr><td style="white-space:nowrap">${esc(m.when)}</td><td>${esc(m.title)}${m.desc ? ": " + esc(m.desc) : ""}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}</div>
   <div><h2>Every medicine</h2>${allMeds.length ? `<table><tr><th>Medicine</th><th>Dose</th><th>Dates</th><th>Outcome</th></tr>${allMeds.map((m) => `<tr><td>${esc(m.name)}${isSteroid(m.name) ? " (steroid)" : ""}</td><td>${esc([m.dose, m.freq].filter(Boolean).join(", "))}${(m.changes || []).map((c) => `<br>→ ${esc([c.dose, c.freq].filter(Boolean).join(", "))} from ${esc(fmtRough(c.from))}`).join("")}</td><td>${esc(fmtRough(m.start))} to ${m.stop ? esc(fmtRough(m.stop)) : "now"}</td><td>${m.stop ? esc([m.why, m.note].filter(Boolean).join(": ") || "Stopped") : "Taking"}</td></tr>`).join("")}</table>` : `<div class="muted">None recorded</div>`}</div></div>
 

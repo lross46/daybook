@@ -66,7 +66,7 @@ function badDaysCard(keys) {
 }
 /* period: the same buttons, arrows and sliding as the History timeline; the window ends on trEnd (today unless you go back) */
 const TR_P = [["1 mo", 1], ["3 mo", 3], ["6 mo", 6], ["1 yr", 12]];
-let tPeriod = LS.get("gl.tperiod", 1), trEnd = null, trDrag = null, trSwallow = 0;
+let tPeriod = 3, /* always opens on 3 months */ trEnd = null, trDrag = null, trSwallow = 0;
 function trRange() {
   const t = todayIso(); if (!trEnd || trEnd > t) trEnd = t;
   const d = parseIso(trEnd); d.setMonth(d.getMonth() - tPeriod); d.setDate(d.getDate() + 1);
@@ -93,7 +93,7 @@ function trMini(keys) {
 const trShift = (months) => { const d = parseIso(trEnd || todayIso()); d.setMonth(d.getMonth() + months); trEnd = iso(d); };
 document.addEventListener("click", (e) => {
   if (tab !== "trends") return;
-  const b = e.target.closest("[data-tperiod]"); if (b) { tPeriod = +b.dataset.tperiod; LS.set("gl.tperiod", tPeriod); renderTrends(); return; }
+  const b = e.target.closest("[data-tperiod]"); if (b) { tPeriod = +b.dataset.tperiod; renderTrends(); return; }
   const s = e.target.closest("[data-trstep]"); if (s) { trShift(+s.dataset.trstep * tPeriod); renderTrends(); return; }
   const m = e.target.closest("#trMini"); if (m && trMini.span) { const r = m.getBoundingClientRect(), [first, total] = trMini.span, k = addDays(first, Math.round(((e.clientX - r.left) / r.width * 360 - 4) / 352 * total)); trEnd = addDays(k, Math.round(trRange().keys.length / 2)); renderTrends(); }
 });

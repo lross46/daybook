@@ -18,7 +18,7 @@ document.addEventListener("click", (e) => {
 });
 /* zoom windows: how many years each step shows (0 = everything) */
 const TL_ZOOMS = [["All", 0], ["5 yrs", 5], ["1 yr", 1], ["6 mo", .5], ["3 mo", .25], ["1 mo", 1 / 12]];
-let tlZ = LS.get("gl.tlz", 0), tlEnd = null, tlDrag = null;
+let tlZ = 4, /* always opens on 3 months */ tlEnd = null, tlDrag = null;
 const monthEnd = () => Math.ceil(roughYear(todayIso(), "start") * 12 + .001) / 12;
 function tlWindow() {
   const span = TL_ZOOMS[tlZ][1]; if (!span) return null;
@@ -50,12 +50,12 @@ function drawChart() {
 /* show the window that holds year y (used by search) */
 function jumpTo(y, soft) {
   if ($("#tlBody")?.hidden) return;
-  if (!TL_ZOOMS[tlZ][1]) { if (soft) return; tlZ = 2; LS.set("gl.tlz", tlZ); for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", +b.dataset.tlz === tlZ); }
+  if (!TL_ZOOMS[tlZ][1]) { if (soft) return; tlZ = 2; for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", +b.dataset.tlz === tlZ); }
   tlEnd = Math.floor(y) + 1; drawChart();
 }
 document.addEventListener("click", (e) => {
   const z = e.target.closest("[data-tlz]");
-  if (z) { tlZ = +z.dataset.tlz; LS.set("gl.tlz", tlZ); for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", b === z); drawChart(); return; }
+  if (z) { tlZ = +z.dataset.tlz; for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", b === z); drawChart(); return; }
   const st = e.target.closest("[data-tlstep]");
   if (st) { tlEnd += +st.dataset.tlstep * TL_ZOOMS[tlZ][1]; drawChart(); return; }
   const mm = e.target.closest("#tlMini");

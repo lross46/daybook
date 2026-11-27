@@ -442,7 +442,7 @@ function badDaysCard(keys) {
 }
 /* period: the same buttons, arrows and sliding as the History timeline; the window ends on trEnd (today unless you go back) */
 const TR_P = [["1 mo", 1], ["3 mo", 3], ["6 mo", 6], ["1 yr", 12]];
-let tPeriod = LS.get("gl.tperiod", 1), trEnd = null, trDrag = null, trSwallow = 0;
+let tPeriod = 3, /* always opens on 3 months */ trEnd = null, trDrag = null, trSwallow = 0;
 function trRange() {
   const t = todayIso(); if (!trEnd || trEnd > t) trEnd = t;
   const d = parseIso(trEnd); d.setMonth(d.getMonth() - tPeriod); d.setDate(d.getDate() + 1);
@@ -469,7 +469,7 @@ function trMini(keys) {
 const trShift = (months) => { const d = parseIso(trEnd || todayIso()); d.setMonth(d.getMonth() + months); trEnd = iso(d); };
 document.addEventListener("click", (e) => {
   if (tab !== "trends") return;
-  const b = e.target.closest("[data-tperiod]"); if (b) { tPeriod = +b.dataset.tperiod; LS.set("gl.tperiod", tPeriod); renderTrends(); return; }
+  const b = e.target.closest("[data-tperiod]"); if (b) { tPeriod = +b.dataset.tperiod; renderTrends(); return; }
   const s = e.target.closest("[data-trstep]"); if (s) { trShift(+s.dataset.trstep * tPeriod); renderTrends(); return; }
   const m = e.target.closest("#trMini"); if (m && trMini.span) { const r = m.getBoundingClientRect(), [first, total] = trMini.span, k = addDays(first, Math.round(((e.clientX - r.left) / r.width * 360 - 4) / 352 * total)); trEnd = addDays(k, Math.round(trRange().keys.length / 2)); renderTrends(); }
 });
@@ -930,7 +930,7 @@ document.addEventListener("click", (e) => {
 });
 /* zoom windows: how many years each step shows (0 = everything) */
 const TL_ZOOMS = [["All", 0], ["5 yrs", 5], ["1 yr", 1], ["6 mo", .5], ["3 mo", .25], ["1 mo", 1 / 12]];
-let tlZ = LS.get("gl.tlz", 0), tlEnd = null, tlDrag = null;
+let tlZ = 4, /* always opens on 3 months */ tlEnd = null, tlDrag = null;
 const monthEnd = () => Math.ceil(roughYear(todayIso(), "start") * 12 + .001) / 12;
 function tlWindow() {
   const span = TL_ZOOMS[tlZ][1]; if (!span) return null;
@@ -962,12 +962,12 @@ function drawChart() {
 /* show the window that holds year y (used by search) */
 function jumpTo(y, soft) {
   if ($("#tlBody")?.hidden) return;
-  if (!TL_ZOOMS[tlZ][1]) { if (soft) return; tlZ = 2; LS.set("gl.tlz", tlZ); for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", +b.dataset.tlz === tlZ); }
+  if (!TL_ZOOMS[tlZ][1]) { if (soft) return; tlZ = 2; for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", +b.dataset.tlz === tlZ); }
   tlEnd = Math.floor(y) + 1; drawChart();
 }
 document.addEventListener("click", (e) => {
   const z = e.target.closest("[data-tlz]");
-  if (z) { tlZ = +z.dataset.tlz; LS.set("gl.tlz", tlZ); for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", b === z); drawChart(); return; }
+  if (z) { tlZ = +z.dataset.tlz; for (const b of $$("[data-tlz]")) b.setAttribute("aria-pressed", b === z); drawChart(); return; }
   const st = e.target.closest("[data-tlstep]");
   if (st) { tlEnd += +st.dataset.tlstep * TL_ZOOMS[tlZ][1]; drawChart(); return; }
   const mm = e.target.closest("#tlMini");
@@ -1408,7 +1408,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 53</div>
+  <div class="sub">App version 54</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });
@@ -1538,7 +1538,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
-  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; trEnd = null; tlEnd = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
+  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; trEnd = null; tlEnd = null; tPeriod = 3; tlZ = 4; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
 });
 
 /* ---------- start ---------- */

@@ -104,7 +104,7 @@ function renderMeds() {
   $("#main").innerHTML = `<div data-fscope style="display:contents">
   <button class="btn primary" data-act="medAdd">+ Add medicine</button>
   ${cur.length + past.length > 3 ? findBox("Search medicines") : ""}
-  <div class="card" data-fgroup><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="sub">Tap one to change or stop it</span>` : ""}</div>
+  <div class="card" data-fgroup><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="sub">Tap one to see it</span>` : ""}</div>
     ${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.form, m.note, isSteroid(m.name) && "steroid")}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}
   </div>
   <div class="empty-note" data-fempty hidden>No medicine matches. Try another word.</div>
@@ -116,7 +116,7 @@ function steroidOpen() {
   const st = steroidCourses(), recent = new Set(st.recent.map((m) => m.id));
   openSheet(`${sheetHead("Steroid courses", `${st.recent.length} in the last 12 months · ${st.all.length} ever`)}
     ${st.all.length ? `<div>${st.all.map((m) => `<div class="tr" data-med="${m.id}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${m.stop ? esc(fmtRough(m.stopDay || m.stop)) : "now"}</span></div><div class="sub">${esc([doseText(m) === "Dose not set" ? "" : doseText(m), m.form, m.why, m.note].filter(Boolean).join(" · ") || "No details yet")}${recent.has(m.id) ? ' · <b style="color:var(--mild)">last 12 months</b>' : ""}</div></div></div>`).join("")}</div>
-    <div class="sub">Oldest first. Tap one to edit it. Prednisolone, budesonide, hydrocortisone and similar count as steroids.</div>` : `<div class="empty-note">No steroid courses yet. Add one with + Add medicine.</div>`}`);
+    <div class="sub">Oldest first. Tap one to see it. Prednisolone, budesonide, hydrocortisone and similar count as steroids.</div>` : `<div class="empty-note">No steroid courses yet. Add one with + Add medicine.</div>`}`);
 }
 function medForm(m) {
   const now = !m || !m.stop;

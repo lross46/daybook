@@ -166,3 +166,30 @@ function flareForm(f) {
   momentForm({ id: f.id, type: "flare", when: f.start, details: { end: f.end, sev: f.sev }, note: f.note }, "flare");
   const b = $('#sheet [data-act="momentDelete"]'); if (b) { b.dataset.act = "flareDelete"; b.textContent = "Delete this flare"; }
 }
+
+/* ---------- tap an item: see it first, edit only from the Edit button ---------- */
+const kvRows = (rows) => `<div class="kv mini view">${rows.filter(([, v]) => v).map(([k, v]) => `<div><span class="sub">${k}</span><span>${esc(v)}</span></div>`).join("")}</div>`;
+const yrsBetween = (a, b) => { const d = roughYear(b) - roughYear(a); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.round(d * 12)} months` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
+function medView(m) {
+  const c = curDose(m), st = isSteroid(m.name);
+  const changes = (m.changes || []).map((x) => `${fmtRough(x.from)}: ${[x.dose, x.freq].filter(Boolean).join(" · ")}`);
+  openSheet(`${sheetHead(m.name, m.stop ? `${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stopDay || m.stop))}` : `Taking since ${esc(fmtRough(m.start))}`)}
+    ${kvRows([[m.stop ? "Last dose" : "Dose now", [c.dose, c.freq].filter(Boolean).join(" · ")], ["Form", m.form], ["Type", st ? "Steroid" : ""], ["How long", m.start ? yrsBetween(m.start, m.stop ? m.stopDay || m.stop : todayIso()) : ""], ["Why stopped", m.stop ? m.why : ""], ["Note", m.note]])}
+    ${changes.length ? `<div><div class="label">Dose changes</div>${kvRows(changes.map((t) => ["", t]))}</div>` : ""}
+    <button class="btn" data-act="medEdit" data-id="${m.id}">${m.stop ? "Edit" : "Change dose, stop or edit"}</button>`);
+}
+function momentView(m) {
+  const [, label] = mtype(m.type), d = m.details || {};
+  const title = m.type === "other" ? d.title || "Other" : m.type === "diagnosis" ? "Diagnosed" : label;
+  openSheet(`${sheetHead(title, esc(fmtRough(m.when)))}
+    ${kvRows([["Result", d.result], ["Reached", d.extent], ["Polyps", d.polyps], ["Biopsy", d.biopsy], ["Next due", d.nextDue], ["Days in hospital", d.days], ["Surgery", d.what], ["Note", m.note]])}
+    <button class="btn" data-act="momentEdit" data-id="${m.id}">Edit</button>`);
+}
+function flareView(f) {
+  const end = f.end || todayIso(), a = roughSort(f.start), b = roughSort(end);
+  const meds = live(data.meds).filter((m) => m.start && roughSort(m.start) <= b && (!m.stop || roughSort(m.stopDay || m.stop) >= a)).map((m) => m.name);
+  const moms = live(data.moments).filter((m) => m.when && roughSort(m.when) >= a && roughSort(m.when) <= b).map((m) => `${mtype(m.type)[1]} ${fmtRough(m.when)}`);
+  openSheet(`${sheetHead(f.end ? "Flare" : "Flare (ongoing)", `${esc(fmtRough(f.start))} to ${f.end ? esc(fmtRough(f.end)) : "now"}`)}
+    ${kvRows([["How long", yrsBetween(f.start, end)], ["How bad", f.sev], ["Medicines at the time", [...new Set(meds)].join(", ")], ["During it", moms.join(", ")], ["Note", f.note]])}
+    <button class="btn" data-act="flareEdit" data-id="${f.id}">Edit</button>`);
+}

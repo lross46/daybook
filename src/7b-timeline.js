@@ -18,9 +18,10 @@ document.addEventListener("click", (e) => {
 function drawChart() {
   const w = $("#chartWrap"); if (!w) return;
   const chart = medGantt(360, medZoom, chartShow), sc = medGantt.sc, years = [];
-  for (let y = Math.ceil(sc.y1) - 1; y >= Math.floor(sc.y0); y--) years.push(y);
+  for (let y = Math.floor(sc.y0); y < Math.ceil(sc.y1); y++) years.push(y);
   w.innerHTML = `${medZoom ? `<div class="jump" aria-label="Go to year">${years.map((y) => `<button type="button" data-jump="${y}">${y}</button>`).join("")}</div>` : ""}
     <div style="position:relative"><div class="wide" id="ganttBox">${chart}</div>${medGantt.names.map((n) => `<svg class="gname" style="top:${n.y}px" height="16" width="300"><text x="4" y="12" font-size="11" font-weight="600" fill="var(--fg)" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">${n.label}</text></svg>`).join("")}</div>`;
+  const jr = w.querySelector(".jump"); if (jr) jr.scrollLeft = jr.scrollWidth;
 }
 /* scroll the chart so the year sits near the left edge; zoom in first if the whole history is showing */
 function jumpTo(y, soft) {

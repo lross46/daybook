@@ -463,7 +463,7 @@ function renderMeds() {
   $("#main").innerHTML = `<div data-fscope style="display:contents">
   <button class="btn primary" data-act="medAdd">+ Add medicine</button>
   ${cur.length + past.length > 3 ? findBox("Search medicines") : ""}
-  <div class="card" data-fgroup><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="sub">Tap one to change or stop it</span>` : ""}</div>
+  <div class="card" data-fgroup><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="sub">Tap one to see it</span>` : ""}</div>
     ${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.form, m.note, isSteroid(m.name) && "steroid")}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}
   </div>
   <div class="empty-note" data-fempty hidden>No medicine matches. Try another word.</div>
@@ -475,7 +475,7 @@ function steroidOpen() {
   const st = steroidCourses(), recent = new Set(st.recent.map((m) => m.id));
   openSheet(`${sheetHead("Steroid courses", `${st.recent.length} in the last 12 months · ${st.all.length} ever`)}
     ${st.all.length ? `<div>${st.all.map((m) => `<div class="tr" data-med="${m.id}"><span class="dot" style="background:${medColor(m)}"></span><div style="min-width:0"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">${esc(fmtRough(m.start))} to ${m.stop ? esc(fmtRough(m.stopDay || m.stop)) : "now"}</span></div><div class="sub">${esc([doseText(m) === "Dose not set" ? "" : doseText(m), m.form, m.why, m.note].filter(Boolean).join(" · ") || "No details yet")}${recent.has(m.id) ? ' · <b style="color:var(--mild)">last 12 months</b>' : ""}</div></div></div>`).join("")}</div>
-    <div class="sub">Oldest first. Tap one to edit it. Prednisolone, budesonide, hydrocortisone and similar count as steroids.</div>` : `<div class="empty-note">No steroid courses yet. Add one with + Add medicine.</div>`}`);
+    <div class="sub">Oldest first. Tap one to see it. Prednisolone, budesonide, hydrocortisone and similar count as steroids.</div>` : `<div class="empty-note">No steroid courses yet. Add one with + Add medicine.</div>`}`);
 }
 function medForm(m) {
   const now = !m || !m.stop;
@@ -692,6 +692,33 @@ function flareForm(f) {
   momentForm({ id: f.id, type: "flare", when: f.start, details: { end: f.end, sev: f.sev }, note: f.note }, "flare");
   const b = $('#sheet [data-act="momentDelete"]'); if (b) { b.dataset.act = "flareDelete"; b.textContent = "Delete this flare"; }
 }
+
+/* ---------- tap an item: see it first, edit only from the Edit button ---------- */
+const kvRows = (rows) => `<div class="kv mini view">${rows.filter(([, v]) => v).map(([k, v]) => `<div><span class="sub">${k}</span><span>${esc(v)}</span></div>`).join("")}</div>`;
+const yrsBetween = (a, b) => { const d = roughYear(b) - roughYear(a); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.round(d * 12)} months` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
+function medView(m) {
+  const c = curDose(m), st = isSteroid(m.name);
+  const changes = (m.changes || []).map((x) => `${fmtRough(x.from)}: ${[x.dose, x.freq].filter(Boolean).join(" · ")}`);
+  openSheet(`${sheetHead(m.name, m.stop ? `${esc(fmtRough(m.start))} to ${esc(fmtRough(m.stopDay || m.stop))}` : `Taking since ${esc(fmtRough(m.start))}`)}
+    ${kvRows([[m.stop ? "Last dose" : "Dose now", [c.dose, c.freq].filter(Boolean).join(" · ")], ["Form", m.form], ["Type", st ? "Steroid" : ""], ["How long", m.start ? yrsBetween(m.start, m.stop ? m.stopDay || m.stop : todayIso()) : ""], ["Why stopped", m.stop ? m.why : ""], ["Note", m.note]])}
+    ${changes.length ? `<div><div class="label">Dose changes</div>${kvRows(changes.map((t) => ["", t]))}</div>` : ""}
+    <button class="btn" data-act="medEdit" data-id="${m.id}">${m.stop ? "Edit" : "Change dose, stop or edit"}</button>`);
+}
+function momentView(m) {
+  const [, label] = mtype(m.type), d = m.details || {};
+  const title = m.type === "other" ? d.title || "Other" : m.type === "diagnosis" ? "Diagnosed" : label;
+  openSheet(`${sheetHead(title, esc(fmtRough(m.when)))}
+    ${kvRows([["Result", d.result], ["Reached", d.extent], ["Polyps", d.polyps], ["Biopsy", d.biopsy], ["Next due", d.nextDue], ["Days in hospital", d.days], ["Surgery", d.what], ["Note", m.note]])}
+    <button class="btn" data-act="momentEdit" data-id="${m.id}">Edit</button>`);
+}
+function flareView(f) {
+  const end = f.end || todayIso(), a = roughSort(f.start), b = roughSort(end);
+  const meds = live(data.meds).filter((m) => m.start && roughSort(m.start) <= b && (!m.stop || roughSort(m.stopDay || m.stop) >= a)).map((m) => m.name);
+  const moms = live(data.moments).filter((m) => m.when && roughSort(m.when) >= a && roughSort(m.when) <= b).map((m) => `${mtype(m.type)[1]} ${fmtRough(m.when)}`);
+  openSheet(`${sheetHead(f.end ? "Flare" : "Flare (ongoing)", `${esc(fmtRough(f.start))} to ${f.end ? esc(fmtRough(f.end)) : "now"}`)}
+    ${kvRows([["How long", yrsBetween(f.start, end)], ["How bad", f.sev], ["Medicines at the time", [...new Set(meds)].join(", ")], ["During it", moms.join(", ")], ["Note", f.note]])}
+    <button class="btn" data-act="flareEdit" data-id="${f.id}">Edit</button>`);
+}
 /* ---------- Timeline: medicines, flares, colonoscopies and hospital stays together ---------- */
 const LAYERS = [["meds", "Medicines", `<i style="background:var(--med1);height:6px;border-radius:3px;width:14px"></i>`], ["flares", "Flares", `<i style="background:var(--mod);opacity:.45"></i>`], ["scope", "Colonoscopy", "◆"], ["hosp", "Hospital / surgery", `<b style="color:var(--sev)">✚</b>`]];
 let chartShow = Object.assign({ meds: true, flares: true, scope: true, hosp: true }, LS.get("gl.show", {}));
@@ -712,9 +739,10 @@ document.addEventListener("click", (e) => {
 function drawChart() {
   const w = $("#chartWrap"); if (!w) return;
   const chart = medGantt(360, medZoom, chartShow), sc = medGantt.sc, years = [];
-  for (let y = Math.ceil(sc.y1) - 1; y >= Math.floor(sc.y0); y--) years.push(y);
+  for (let y = Math.floor(sc.y0); y < Math.ceil(sc.y1); y++) years.push(y);
   w.innerHTML = `${medZoom ? `<div class="jump" aria-label="Go to year">${years.map((y) => `<button type="button" data-jump="${y}">${y}</button>`).join("")}</div>` : ""}
     <div style="position:relative"><div class="wide" id="ganttBox">${chart}</div>${medGantt.names.map((n) => `<svg class="gname" style="top:${n.y}px" height="16" width="300"><text x="4" y="12" font-size="11" font-weight="600" fill="var(--fg)" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">${n.label}</text></svg>`).join("")}</div>`;
+  const jr = w.querySelector(".jump"); if (jr) jr.scrollLeft = jr.scrollWidth;
 }
 /* scroll the chart so the year sits near the left edge; zoom in first if the whole history is showing */
 function jumpTo(y, soft) {
@@ -1204,6 +1232,9 @@ const ACTS = {
   medDose: (el) => medDose(el.dataset.id),
   medStop: (el) => medStop(el.dataset.id),
   medFix: (el) => medForm(byId(data.meds, el.dataset.id)),
+  medEdit: (el) => { const m = byId(data.meds, el.dataset.id); if (m) medActions(m); },
+  momentEdit: (el) => { const m = byId(data.moments, el.dataset.id); if (m) momentForm(m); },
+  flareEdit: (el) => { const f = byId(data.flares, el.dataset.id); if (f) flareForm(f); },
   /* History */
   profileEdit: () => profileEdit(),
   aboutOpen: () => aboutOpen(),
@@ -1237,10 +1268,10 @@ document.addEventListener("click", (e) => {
   const t = e.target.closest("[data-tab]"); if (t) { if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
   if (e.target.id === "scrim") { closeSheet(); return; }
   const day = e.target.closest("[data-day]"); if (day) { viewDay = day.dataset.day; go("today"); return; }
-  const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medActions(m); return; }
+  const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medView(m); return; }
   const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
-  const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentForm(x); return; }
-  const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareForm(x); return; }
+  const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentView(x); return; }
+  const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareView(x); return; }
   const qd = e.target.closest("[data-qdel]"); if (qd) { e.preventDefault(); const q = byId(data.questions, qd.dataset.qdel); if (q) { q.del = true; stamp(q); save(); renderDoctor(); } return; }
   const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", b === zm); drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; return; }
   const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }

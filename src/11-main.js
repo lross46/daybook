@@ -42,6 +42,9 @@ const ACTS = {
   medDose: (el) => medDose(el.dataset.id),
   medStop: (el) => medStop(el.dataset.id),
   medFix: (el) => medForm(byId(data.meds, el.dataset.id)),
+  medEdit: (el) => { const m = byId(data.meds, el.dataset.id); if (m) medActions(m); },
+  momentEdit: (el) => { const m = byId(data.moments, el.dataset.id); if (m) momentForm(m); },
+  flareEdit: (el) => { const f = byId(data.flares, el.dataset.id); if (f) flareForm(f); },
   /* History */
   profileEdit: () => profileEdit(),
   aboutOpen: () => aboutOpen(),
@@ -75,10 +78,10 @@ document.addEventListener("click", (e) => {
   const t = e.target.closest("[data-tab]"); if (t) { if (!$("#sheet").hidden) closeSheet(); go(t.dataset.tab); return; }
   if (e.target.id === "scrim") { closeSheet(); return; }
   const day = e.target.closest("[data-day]"); if (day) { viewDay = day.dataset.day; go("today"); return; }
-  const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medActions(m); return; }
+  const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medView(m); return; }
   const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
-  const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentForm(x); return; }
-  const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareForm(x); return; }
+  const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentView(x); return; }
+  const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareView(x); return; }
   const qd = e.target.closest("[data-qdel]"); if (qd) { e.preventDefault(); const q = byId(data.questions, qd.dataset.qdel); if (q) { q.del = true; stamp(q); save(); renderDoctor(); } return; }
   const zm = e.target.closest("[data-zoom]"); if (zm) { medZoom = +zm.dataset.zoom; LS.set("gl.zoom", medZoom); for (const b of $$("#zoomSeg button")) b.setAttribute("aria-pressed", b === zm); drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; return; }
   const pr = e.target.closest("[data-period]"); if (pr) { period = +pr.dataset.period; LS.set("gl.period", period); renderDoctor(); return; }

@@ -349,3 +349,6 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .layers button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)}
 #evList>.chips{margin:10px 0 6px}
 [data-fscope] .chips.layers{flex-wrap:wrap}
+.kv.view>div{font-size:14.5px;padding:9px 0;border-top:1px solid var(--line);gap:16px}
+.kv.view>div:first-child{border-top:0}
+.kv.view>div>span:last-child{text-align:right}

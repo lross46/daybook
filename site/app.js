@@ -440,10 +440,36 @@ function badDaysCard(keys) {
       <div class="bdd">${x.days.map((k) => `<button data-day="${k}">${esc(fmtDay(k))}</button>`).join("")}</div></details>`; }).join("")}
     <div class="sub">Compares the days after a tag with the days after days without it, using the day score. Flare days are left out. A pattern, not proof. Tap a tag to see its days.</div></div></div>`;
 }
-let tPeriod = LS.get("gl.tperiod", 1);
-document.addEventListener("click", (e) => { const b = e.target.closest("[data-tperiod]"); if (!b) return; tPeriod = +b.dataset.tperiod; LS.set("gl.tperiod", tPeriod); renderTrends(); });
+/* period: the same buttons, arrows and sliding as the History timeline; the window ends on trEnd (today unless you go back) */
+const TR_P = [["1 mo", 1], ["3 mo", 3], ["6 mo", 6], ["1 yr", 12]];
+let tPeriod = LS.get("gl.tperiod", 1), trEnd = null, trDrag = null, trSwallow = 0;
+function trRange() {
+  const t = todayIso(); if (!trEnd || trEnd > t) trEnd = t;
+  const d = parseIso(trEnd); d.setMonth(d.getMonth() - tPeriod); d.setDate(d.getDate() + 1);
+  const start = iso(d), keys = []; for (let k = start; k <= trEnd; k = addDays(k, 1)) keys.push(k);
+  const [a, b] = [parseIso(start), parseIso(trEnd)], f = (x, y) => x.getDate() + " " + MONTHS[x.getMonth()] + (y ? " " + x.getFullYear() : "");
+  return { keys, label: a.getFullYear() === b.getFullYear() ? `${f(a)} – ${f(b, 1)}` : `${f(a, 1)} – ${f(b, 1)}` };
+}
+const trShift = (months) => { const d = parseIso(trEnd || todayIso()); d.setMonth(d.getMonth() + months); trEnd = iso(d); };
+document.addEventListener("click", (e) => {
+  if (tab !== "trends") return;
+  const b = e.target.closest("[data-tperiod]"); if (b) { tPeriod = +b.dataset.tperiod; LS.set("gl.tperiod", tPeriod); renderTrends(); return; }
+  const s = e.target.closest("[data-trstep]"); if (s) { trShift(+s.dataset.trstep * tPeriod); renderTrends(); }
+});
+/* slide the chart with a finger: right = earlier */
+document.addEventListener("pointerdown", (e) => { if (tab !== "trends") return; const c = e.target.closest("#trChart"); if (!c) return; trDrag = { x: e.clientX, end: trEnd || todayIso(), w: c.getBoundingClientRect().width, moved: false }; });
+document.addEventListener("pointermove", (e) => {
+  if (!trDrag) return; const dx = e.clientX - trDrag.x; if (!trDrag.moved && Math.abs(dx) < 8) return;
+  if (!trDrag.moved) try { $("#main").setPointerCapture(e.pointerId); } catch {}
+  trDrag.moved = true; e.preventDefault();
+  const days = Math.round(-dx / trDrag.w * trRange().keys.length); trEnd = addDays(trDrag.end, days);
+  if (!trDrag.raf) trDrag.raf = requestAnimationFrame(() => { if (trDrag) trDrag.raf = 0; renderTrends(); });
+}, { passive: false });
+const trDragEnd = () => { if (!trDrag) return; const m = trDrag.moved; trDrag = null; if (m) { trSwallow = Date.now(); renderTrends(); } };
+document.addEventListener("pointerup", trDragEnd); document.addEventListener("pointercancel", trDragEnd);
+document.addEventListener("click", (e) => { if (Date.now() - trSwallow < 300 && e.target.closest("#trChart")) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 function renderTrends() {
-  const keys = periodRange(tPeriod).keys, logged = keys.filter(dayLogged);
+  const tr = trRange(), keys = tr.keys, logged = keys.filter(dayLogged), atToday = trEnd >= todayIso();
   if (Object.keys(data.days).filter(dayLogged).length === 0) {
     $("#main").innerHTML = `<div class="card"><div class="label">Nothing to show yet</div><p class="sub" style="margin:0;font-size:14px">Log a few days on Today and your charts appear here: stools per day, blood, mucus, flares, a calendar and what tends to come before bad days.</p><button class="btn primary" data-tab="today">Log today</button></div>`;
     return;
@@ -455,8 +481,9 @@ function renderTrends() {
   const n = logged.length || 1;
   $("#main").innerHTML = `
   ${heroHtml()}
-  <div class="seg" id="tperiod">${PERIODS.map(([l, m]) => `<button data-tperiod="${m}" aria-pressed="${m === tPeriod}">${l}</button>`).join("")}</div>
-  <div class="card"><div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--mucus)">${mucus}</b> with mucus</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div>${barChart(keys)}<div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 40 40" width="10" height="10" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${mucusPath}" fill="var(--mucus)"/></svg>Mucus</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">Bar height = stools that day. Drop on top = blood, blob on top = mucus, moon underneath = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
+  <div class="seg" id="tperiod">${TR_P.map(([l, m]) => `<button data-tperiod="${m}" aria-pressed="${m === tPeriod}">${l}</button>`).join("")}</div>
+  <div class="row" id="trNav"><button class="navbtn" data-trstep="-1" aria-label="Earlier">‹</button><b class="tllbl">${tr.label}</b><button class="navbtn" data-trstep="1" aria-label="Later" ${atToday ? "disabled" : ""}>›</button></div>
+  <div class="card"><div class="tsum"><span><b style="color:var(--ok)">${calm}</b> calm days</span><span><b style="color:var(--blood)">${blood}</b> with blood</span><span><b style="color:var(--mucus)">${mucus}</b> with mucus</span><span><b style="color:var(--med2)">${nights}</b> nights woken</span></div><div class="sub" style="margin-top:-6px">${logged.length} of ${keys.length} days logged</div><div id="trChart">${barChart(keys)}</div><div class="legend"><span><b>Day score:</b></span><span><i class="s0"></i>Calm</span><span><i class="s1"></i>Mild</span><span><i class="s2"></i>Moderate</span><span><i class="s3"></i>Severe</span></div><div class="legend"><span><i style="background:var(--flare);border:1px solid var(--mod)"></i>Flare</span><span><svg viewBox="0 0 40 40" width="9" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${dropPath}" fill="var(--blood)"/></svg>Blood</span><span><svg viewBox="0 0 40 40" width="10" height="10" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="${mucusPath}" fill="var(--mucus)"/></svg>Mucus</span><span><svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="display:inline-block;vertical-align:-1px;margin-right:4px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="var(--med2)"/></svg>Woke at night</span></div><div class="sub">Bar height = stools that day. Drop on top = blood, blob on top = mucus, moon underneath = woke at night. Colour = how bad the day was, worked out from your log (not the flare grade).</div></div>
   <div class="card">${foldHead("calBody", "Calendar", `${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)} · tap a day to open it`)}<div id="calBody" ${isOpen("calBody") ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px"><div class="row"><div class="daynav"><button data-act="calPrev" aria-label="Previous month">‹</button><div class="name">${MONTHS_L[+calMonth.slice(5) - 1]} ${calMonth.slice(0, 4)}</div><button data-act="calNext" aria-label="Next month" ${calMonth >= todayIso().slice(0, 7) ? "disabled" : ""}>›</button></div></div>${calendar(calMonth)}</div></div>
   ${badDaysCard(keys)}`;
 }
@@ -1364,7 +1391,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 51</div>
+  <div class="sub">App version 52</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });
@@ -1494,7 +1521,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
-  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
+  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; trEnd = null; tlEnd = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
 });
 
 /* ---------- start ---------- */

@@ -99,7 +99,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
-  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
+  if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) { reopen = null; sheetBack = null; trEnd = null; tlEnd = null; closeSheet(); for (const k in foldOpen) delete foldOpen[k]; viewDay = todayIso(); go("today"); }
 });
 
 /* ---------- start ---------- */

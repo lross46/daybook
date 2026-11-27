@@ -12,8 +12,8 @@ function weekOf(ks) {
   const avg = ds.reduce((a, d) => a + (d.stools || 0), 0) / ds.length;
   return { stools: Math.round(avg * 10) / 10, worst: Math.max(...ds.map((d) => lvl(sccai(d)))), blood: ds.some((d) => d.blood), mucus: ds.some((d) => d.mucus), night: ds.some((d) => d.night > 0) ? 1 : 0, days: ds.length };
 }
-/* from 3 months up, daily bars turn into noise: show weeks instead (the last week ends on the window's last day) */
-const weekly = (keys) => keys.length > 45;
+/* from 6 months up, daily bars turn into noise: show weeks instead (the last week ends on the window's last day) */
+const weekly = (keys) => keys.length > 100; /* daily bars up to 3 months, weeks for 6 months and a year */
 function weekKeys(keys) { const out = []; for (let e = keys.length; e > 0; e -= 7) out.unshift(keys.slice(Math.max(0, e - 7), e)); return out; }
 function barChart(keys, opts = {}) {
   const wk = weekly(keys), groups = wk ? weekKeys(keys) : keys.map((k) => [k]);

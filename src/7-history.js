@@ -174,7 +174,7 @@ function flareForm(f) {
 
 /* ---------- tap an item: see it first, edit only from the Edit button ---------- */
 const kvRows = (rows) => `<div class="kv mini view">${rows.filter(([, v]) => v).map(([k, v]) => `<div><span class="sub">${k}</span><span>${esc(v)}</span></div>`).join("")}</div>`;
-const yrsBetween = (a, b) => { const d = roughYear(b, "end") - roughYear(a, "start"); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.round(d * 12)} months` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
+const yrsBetween = (a, b) => { const d = roughYear(b, "end") - roughYear(a, "start"); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.max(1, Math.round(d * 12))} month${Math.max(1, Math.round(d * 12)) === 1 ? "" : "s"}` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
 function medView(m) {
   const c = curDose(m), st = isSteroid(m.name);
   const changes = (m.changes || []).map((x) => `${fmtRough(x.from)}: ${[x.dose, x.freq].filter(Boolean).join(" · ")}`);

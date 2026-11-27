@@ -405,3 +405,19 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
 .medl span{color:var(--muted)}
 .medl b{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
 .medl .num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+.nowcount{font-size:12px;font-weight:700;color:var(--accent);background:var(--sunk);border-radius:999px;padding:2px 9px}
+.nowmed{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:40px 1fr auto 10px;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.nowmed:first-child{border-top:0;padding-top:4px}
+.nowmed:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:12px}
+.nowico{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--sunk);background:color-mix(in srgb,var(--mc) 15%,transparent)}
+.nowico svg{width:30px;height:30px}
+.nowtxt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.nowname{font-weight:650;font-size:15px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.stbadge{font-size:10.5px;font-weight:700;letter-spacing:.03em;color:var(--mild);border:1px solid var(--mild);border-radius:999px;padding:0 6px;line-height:16px}
+.nowdose{display:flex;align-items:center;gap:6px;font-size:12.5px;min-width:0}
+.nowdose .sub{white-space:nowrap}
+.dchip{background:var(--sunk);background:color-mix(in srgb,var(--mc) 10%,var(--sunk));border-radius:7px;padding:2px 7px;font-size:12.5px;min-width:0}
+.nowsince{display:flex;flex-direction:column;align-items:flex-end;text-align:right;line-height:1.2}
+.nowsince b{font-size:13px;font-weight:700}
+.nowsince span{font-size:11px;color:var(--muted)}
+.nowmed .chev{color:var(--muted)}

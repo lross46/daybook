@@ -133,8 +133,11 @@ function renderMeds() {
   $("#main").innerHTML = `<div data-fscope style="display:contents">
   <button class="btn primary" data-act="medAdd">+ Add medicine</button>
   ${cur.length + past.length > 3 ? findBox("Search medicines") : ""}
-  <div class="card now" data-fgroup><div class="label">Taking now</div>
-    <div id="nowList">${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.form, m.note, isSteroid(m.name) && "steroid")}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}</div>
+  <div class="card now" data-fgroup><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="nowcount">${cur.length}</span>` : ""}</div>
+    <div id="nowList">${cur.length ? cur.map((m) => { const c = medColor(m), dose = doseText(m); return `<button class="nowmed" data-med="${m.id}" data-fi="${findText(m.name, dose, m.form, m.note, isSteroid(m.name) && "steroid")}" style="--mc:${c}">
+      <span class="nowico">${medIcon(m, c)}</span>
+      <span class="nowtxt"><span class="nowname">${esc(m.name)}${isSteroid(m.name) ? `<span class="stbadge">Steroid</span>` : ""}</span><span class="nowdose">${dose === "Dose not set" ? `<span class="sub">Dose not set</span>` : `<span class="dchip">${esc(dose)}</span>`}</span></span>
+      <span class="nowsince"><b>${m.start ? esc(yrsBetween(m.start, todayIso())) : ""}</b><span>since ${esc(fmtRough((m.start || "").slice(0, 7)))}</span></span><span class="chev" aria-hidden="true">›</span></button>`; }).join("") : `<div class="empty-note">No medicines added yet.</div>`}</div>
   </div>
   <div class="empty-note" data-fempty hidden>No medicine matches. Try another word.</div>
   ${past.length ? `<div class="card" data-fgroup><button class="about fold" data-act="listToggle" data-fold="evList" data-show="${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}" aria-expanded="false"><span class="grow"><b>Tried before (${past.length})</b><span class="sub">${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}</span></span><span class="chev" aria-hidden="true">›</span></button>

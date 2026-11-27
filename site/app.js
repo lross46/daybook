@@ -649,8 +649,11 @@ function renderMeds() {
   $("#main").innerHTML = `<div data-fscope style="display:contents">
   <button class="btn primary" data-act="medAdd">+ Add medicine</button>
   ${cur.length + past.length > 3 ? findBox("Search medicines") : ""}
-  <div class="card now" data-fgroup><div class="label">Taking now</div>
-    <div id="nowList">${cur.length ? cur.map((m) => `<button class="medtap" data-med="${m.id}" data-fi="${findText(m.name, doseText(m), m.form, m.note, isSteroid(m.name) && "steroid")}">${medIcon(m, medColor(m))}<div class="grow"><div class="row"><span class="name">${esc(m.name)}</span><span class="sub">since ${esc(fmtRough(m.start))} ›</span></div><div class="sub">${esc(doseText(m))}${m.form ? " · " + esc(m.form.toLowerCase()) : ""}</div></div></button>`).join("") : `<div class="empty-note">No medicines added yet.</div>`}</div>
+  <div class="card now" data-fgroup><div class="row"><div class="label">Taking now</div>${cur.length ? `<span class="nowcount">${cur.length}</span>` : ""}</div>
+    <div id="nowList">${cur.length ? cur.map((m) => { const c = medColor(m), dose = doseText(m); return `<button class="nowmed" data-med="${m.id}" data-fi="${findText(m.name, dose, m.form, m.note, isSteroid(m.name) && "steroid")}" style="--mc:${c}">
+      <span class="nowico">${medIcon(m, c)}</span>
+      <span class="nowtxt"><span class="nowname">${esc(m.name)}${isSteroid(m.name) ? `<span class="stbadge">Steroid</span>` : ""}</span><span class="nowdose">${dose === "Dose not set" ? `<span class="sub">Dose not set</span>` : `<span class="dchip">${esc(dose)}</span>`}</span></span>
+      <span class="nowsince"><b>${m.start ? esc(yrsBetween(m.start, todayIso())) : ""}</b><span>since ${esc(fmtRough((m.start || "").slice(0, 7)))}</span></span><span class="chev" aria-hidden="true">›</span></button>`; }).join("") : `<div class="empty-note">No medicines added yet.</div>`}</div>
   </div>
   <div class="empty-note" data-fempty hidden>No medicine matches. Try another word.</div>
   ${past.length ? `<div class="card" data-fgroup><button class="about fold" data-act="listToggle" data-fold="evList" data-show="${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}" aria-expanded="false"><span class="grow"><b>Tried before (${past.length})</b><span class="sub">${esc(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""))}</span></span><span class="chev" aria-hidden="true">›</span></button>
@@ -887,7 +890,7 @@ function flareForm(f) {
 
 /* ---------- tap an item: see it first, edit only from the Edit button ---------- */
 const kvRows = (rows) => `<div class="kv mini view">${rows.filter(([, v]) => v).map(([k, v]) => `<div><span class="sub">${k}</span><span>${esc(v)}</span></div>`).join("")}</div>`;
-const yrsBetween = (a, b) => { const d = roughYear(b, "end") - roughYear(a, "start"); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.round(d * 12)} months` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
+const yrsBetween = (a, b) => { const d = roughYear(b, "end") - roughYear(a, "start"); return d < 0.1 ? `${Math.max(1, Math.round(d * 52))} weeks` : d < 1 ? `${Math.max(1, Math.round(d * 12))} month${Math.max(1, Math.round(d * 12)) === 1 ? "" : "s"}` : `${d < 2 ? Math.round(d * 10) / 10 : Math.round(d)} years`; };
 function medView(m) {
   const c = curDose(m), st = isSteroid(m.name);
   const changes = (m.changes || []).map((x) => `${fmtRough(x.from)}: ${[x.dose, x.freq].filter(Boolean).join(" · ")}`);
@@ -1412,7 +1415,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 57</div>
+  <div class="sub">App version 58</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });

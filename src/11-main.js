@@ -83,7 +83,7 @@ document.addEventListener("click", (e) => {
   const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medActions(m); return; }
   const tst = e.target.closest("[data-test]"); if (tst) { testDetail(tst.dataset.test); return; }
   const tr = e.target.closest("[data-testrow]"); if (tr) { const x = byId(data.tests, tr.dataset.testrow); if (x) typeEntry(x); return; }
-  const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) { const [y, m] = when.split("-"); const sel = $$('[data-rough="mWhen"] select'); if (sel[0]) sel[0].value = m || ""; if (sel[1]) sel[1].value = y; } $("#mNoteIn").value = note; return; }
+  const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
   const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentForm(x); return; }
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareForm(x); return; }
   const qd = e.target.closest("[data-qdel]"); if (qd) { e.preventDefault(); const q = byId(data.questions, qd.dataset.qdel); if (q) { q.del = true; stamp(q); save(); renderDoctor(); } return; }

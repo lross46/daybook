@@ -356,12 +356,20 @@ function calendar(ym) {
 
 /* ---------- rough date picker (year, optional month) ---------- */
 function roughInput(id, val, opts = {}) {
-  const [y, m] = (val || "").split("-");
+  const [y, m, d] = (val || "").split("-");
   const now = new Date().getFullYear(), years = [];
   for (let i = now; i >= 1960; i--) years.push(i);
-  return `<div class="two" data-rough="${id}"><select aria-label="Month"><option value="">Month (optional)</option>${MONTHS_L.map((n, i) => `<option value="${pad(i + 1)}" ${m === pad(i + 1) ? "selected" : ""}>${n}</option>`).join("")}</select><select aria-label="Year"><option value="">${opts.blank || "Year"}</option>${years.map((v) => `<option ${String(v) === y ? "selected" : ""}>${v}</option>`).join("")}</select></div>`;
+  const days = []; for (let i = 1; i <= 31; i++) days.push(pad(i));
+  return `<div class="two" data-rough="${id}" style="grid-template-columns:.8fr 1.5fr 1fr"><select aria-label="Day"><option value="">Day</option>${days.map((v) => `<option value="${v}" ${d === v ? "selected" : ""}>${+v}</option>`).join("")}</select><select aria-label="Month"><option value="">Month</option>${MONTHS_L.map((n, i) => `<option value="${pad(i + 1)}" ${m === pad(i + 1) ? "selected" : ""}>${n}</option>`).join("")}</select><select aria-label="Year"><option value="">${opts.blank || "Year"}</option>${years.map((v) => `<option ${String(v) === y ? "selected" : ""}>${v}</option>`).join("")}</select></div>`;
 }
-function readRough(id) { const el = $(`[data-rough="${id}"]`); if (!el) return ""; const [m, y] = $$("select", el).map((s) => s.value); return y ? (m ? `${y}-${m}` : y) : ""; }
+/* "YYYY", "YYYY-MM" or "YYYY-MM-DD"; a day only counts with a month, and is kept inside that month */
+function readRough(id) {
+  const el = $(`[data-rough="${id}"]`); if (!el) return "";
+  const [d, m, y] = $$("select", el).map((s) => s.value);
+  if (!y) return ""; if (!m) return y; if (!d) return `${y}-${m}`;
+  const last = new Date(+y, +m, 0).getDate();
+  return `${y}-${m}-${pad(Math.min(+d, last))}`;
+}
 const segHtml = (id, opts, val, cols) => `<div class="seg" data-seg="${id}" style="grid-template-columns:repeat(${cols || opts.length},1fr)">${opts.map((o) => `<button type="button" aria-pressed="${o === val}">${esc(o)}</button>`).join("")}</div>`;
 const segVal = (id) => { const b = $(`[data-seg="${id}"] button[aria-pressed="true"]`); return b ? b.textContent : ""; };
 const chipsHtml = (id, opts, val) => `<div class="chips" data-chips="${id}">${opts.map((o) => `<button type="button" aria-pressed="${o === val}">${esc(o)}</button>`).join("")}</div>`;
@@ -723,8 +731,9 @@ function momentForm(m, type) {
   };
   openSheet(`${sheetHead(m ? "Edit moment" : "Add a moment")}
   ${m ? "" : `<div class="label">What happened?</div><div class="addgrid" style="grid-template-columns:repeat(3,1fr)" id="mtGrid">${MTYPES.map(([k, l, ic]) => `<button type="button" data-mt="${k}" style="${k === type ? "border-color:var(--accent);background:var(--accent-soft)" : ""}">${S("0 0 24 24", I[ic], stroke)}<b>${l}</b></button>`).join("")}</div>`}
-  <div class="f" style="gap:10px" id="mtPane">${panes[type]}</div>
+  ${type === "flare" ? "" : `<div class="f" style="gap:10px" id="mtPane">${panes[type]}</div>`}
   <div class="f"><span>${type === "flare" ? "Started" : "When"}</span>${roughInput("mWhen", m?.when)}</div>
+  ${type === "flare" ? `<div class="f" style="gap:10px" id="mtPane">${panes[type]}</div>` : ""}
   <label class="f"><span>Note (optional)</span><input id="mNoteIn" value="${esc(m?.note || "")}" placeholder="e.g. doctor's comments, where it was done"></label>
   <button class="btn primary" data-act="momentSave" data-id="${m?.id || ""}" data-type="${type}">${m ? "Save" : "Add to history"}</button>
   ${m ? `<button class="btn danger" data-act="momentDelete" data-id="${m.id}">Delete this moment</button>` : ""}`);
@@ -1229,7 +1238,7 @@ document.addEventListener("click", (e) => {
   const med = e.target.closest("[data-med]"); if (med) { const m = byId(data.meds, med.dataset.med); if (m) medActions(m); return; }
   const tst = e.target.closest("[data-test]"); if (tst) { testDetail(tst.dataset.test); return; }
   const tr = e.target.closest("[data-testrow]"); if (tr) { const x = byId(data.tests, tr.dataset.testrow); if (x) typeEntry(x); return; }
-  const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) { const [y, m] = when.split("-"); const sel = $$('[data-rough="mWhen"] select'); if (sel[0]) sel[0].value = m || ""; if (sel[1]) sel[1].value = y; } $("#mNoteIn").value = note; return; }
+  const mt = e.target.closest("[data-mt]"); if (mt) { const when = readRough("mWhen"), note = $("#mNoteIn")?.value || ""; momentForm(null, mt.dataset.mt); if (when) $('[data-rough="mWhen"]').outerHTML = roughInput("mWhen", when); $("#mNoteIn").value = note; return; }
   const mo = e.target.closest("[data-moment]"); if (mo) { const x = byId(data.moments, mo.dataset.moment); if (x) momentForm(x); return; }
   const fl = e.target.closest("[data-flare]"); if (fl) { const x = byId(data.flares, fl.dataset.flare); if (x) flareForm(x); return; }
   const qd = e.target.closest("[data-qdel]"); if (qd) { e.preventDefault(); const q = byId(data.questions, qd.dataset.qdel); if (q) { q.del = true; stamp(q); save(); renderDoctor(); } return; }

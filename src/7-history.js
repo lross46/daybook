@@ -97,8 +97,9 @@ function momentForm(m, type) {
   };
   openSheet(`${sheetHead(m ? "Edit moment" : "Add a moment")}
   ${m ? "" : `<div class="label">What happened?</div><div class="addgrid" style="grid-template-columns:repeat(3,1fr)" id="mtGrid">${MTYPES.map(([k, l, ic]) => `<button type="button" data-mt="${k}" style="${k === type ? "border-color:var(--accent);background:var(--accent-soft)" : ""}">${S("0 0 24 24", I[ic], stroke)}<b>${l}</b></button>`).join("")}</div>`}
-  <div class="f" style="gap:10px" id="mtPane">${panes[type]}</div>
+  ${type === "flare" ? "" : `<div class="f" style="gap:10px" id="mtPane">${panes[type]}</div>`}
   <div class="f"><span>${type === "flare" ? "Started" : "When"}</span>${roughInput("mWhen", m?.when)}</div>
+  ${type === "flare" ? `<div class="f" style="gap:10px" id="mtPane">${panes[type]}</div>` : ""}
   <label class="f"><span>Note (optional)</span><input id="mNoteIn" value="${esc(m?.note || "")}" placeholder="e.g. doctor's comments, where it was done"></label>
   <button class="btn primary" data-act="momentSave" data-id="${m?.id || ""}" data-type="${type}">${m ? "Save" : "Add to history"}</button>
   ${m ? `<button class="btn danger" data-act="momentDelete" data-id="${m.id}">Delete this moment</button>` : ""}`);

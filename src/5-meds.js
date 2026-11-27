@@ -1,12 +1,20 @@
 
 /* ---------- rough date picker (year, optional month) ---------- */
 function roughInput(id, val, opts = {}) {
-  const [y, m] = (val || "").split("-");
+  const [y, m, d] = (val || "").split("-");
   const now = new Date().getFullYear(), years = [];
   for (let i = now; i >= 1960; i--) years.push(i);
-  return `<div class="two" data-rough="${id}"><select aria-label="Month"><option value="">Month (optional)</option>${MONTHS_L.map((n, i) => `<option value="${pad(i + 1)}" ${m === pad(i + 1) ? "selected" : ""}>${n}</option>`).join("")}</select><select aria-label="Year"><option value="">${opts.blank || "Year"}</option>${years.map((v) => `<option ${String(v) === y ? "selected" : ""}>${v}</option>`).join("")}</select></div>`;
+  const days = []; for (let i = 1; i <= 31; i++) days.push(pad(i));
+  return `<div class="two" data-rough="${id}" style="grid-template-columns:.8fr 1.5fr 1fr"><select aria-label="Day"><option value="">Day</option>${days.map((v) => `<option value="${v}" ${d === v ? "selected" : ""}>${+v}</option>`).join("")}</select><select aria-label="Month"><option value="">Month</option>${MONTHS_L.map((n, i) => `<option value="${pad(i + 1)}" ${m === pad(i + 1) ? "selected" : ""}>${n}</option>`).join("")}</select><select aria-label="Year"><option value="">${opts.blank || "Year"}</option>${years.map((v) => `<option ${String(v) === y ? "selected" : ""}>${v}</option>`).join("")}</select></div>`;
 }
-function readRough(id) { const el = $(`[data-rough="${id}"]`); if (!el) return ""; const [m, y] = $$("select", el).map((s) => s.value); return y ? (m ? `${y}-${m}` : y) : ""; }
+/* "YYYY", "YYYY-MM" or "YYYY-MM-DD"; a day only counts with a month, and is kept inside that month */
+function readRough(id) {
+  const el = $(`[data-rough="${id}"]`); if (!el) return "";
+  const [d, m, y] = $$("select", el).map((s) => s.value);
+  if (!y) return ""; if (!m) return y; if (!d) return `${y}-${m}`;
+  const last = new Date(+y, +m, 0).getDate();
+  return `${y}-${m}-${pad(Math.min(+d, last))}`;
+}
 const segHtml = (id, opts, val, cols) => `<div class="seg" data-seg="${id}" style="grid-template-columns:repeat(${cols || opts.length},1fr)">${opts.map((o) => `<button type="button" aria-pressed="${o === val}">${esc(o)}</button>`).join("")}</div>`;
 const segVal = (id) => { const b = $(`[data-seg="${id}"] button[aria-pressed="true"]`); return b ? b.textContent : ""; };
 const chipsHtml = (id, opts, val) => `<div class="chips" data-chips="${id}">${opts.map((o) => `<button type="button" aria-pressed="${o === val}">${esc(o)}</button>`).join("")}</div>`;

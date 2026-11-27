@@ -1,5 +1,5 @@
 "use strict";
-/* Daybook: a personal log for ulcerative colitis. Data lives on this phone and,
+/* Gut Log: a personal log for ulcerative colitis. Data lives on this phone and,
    if set up, is synced to a private GitHub repo as one encrypted file. */
 
 const $ = (s, r = document) => r.querySelector(s);

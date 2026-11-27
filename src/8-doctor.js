@@ -146,5 +146,5 @@ function makeExcel() {
   const wb = XLSX.utils.book_new();
   for (const [n, rows] of [["Days", days], ["Medicines", meds], ["Tests", tests], ["History", hist], ["About", ab]]) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ "(empty)": "" }]), n);
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  shareOrDownload(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `daybook-${todayIso()}.xlsx`);
+  shareOrDownload(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `gut-log-${todayIso()}.xlsx`);
 }

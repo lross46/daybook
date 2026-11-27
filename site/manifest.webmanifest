@@ -1,6 +1,6 @@
 {
-  "name": "Daybook",
-  "short_name": "Daybook",
+  "name": "Gut Log",
+  "short_name": "Gut Log",
   "description": "A private daily diary.",
   "start_url": "./",
   "scope": "./",

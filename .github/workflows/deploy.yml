@@ -3,6 +3,8 @@ name: Publish
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "23 4 * * 1"   # every Monday: refresh the toilet map
   workflow_dispatch:
 
 permissions:
@@ -19,6 +21,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - id: week
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: tiles
+          key: toilet-tiles-${{ steps.week.outputs.week }}-${{ hashFiles('scripts/toilet-tiles.py') }}
+      - name: Build toilet map from OpenStreetMap (Great Britain)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          curl -sSfL --retry 3 -o gb.osm.pbf https://download.geofabrik.de/europe/great-britain-latest.osm.pbf
+          osmium tags-filter -o places.osm.pbf gb.osm.pbf \
+            nwr/amenity=toilets,pub,bar,cafe,fast_food nwr/toilets=yes nwr/tourism=hotel nwr/shop=department_store,mall
+          osmium export places.osm.pbf -f geojsonseq -o places.geojsonseq --geometry-types=point,linestring,polygon
+          python3 scripts/toilet-tiles.py places.geojsonseq tiles
+          rm -f gb.osm.pbf places.osm.pbf places.geojsonseq
+      - name: Add the toilet map to the site
+        run: |
+          rm -rf site/toilets && cp -r tiles site/toilets
+          du -sh site/toilets && ls site/toilets | wc -l
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -27,8 +27,8 @@ async function lock(obj, pass, saltB64) {
   return JSON.stringify({ format: "vault", v: 1, kdf: "PBKDF2-SHA256", iter: ITER, cipher: "AES-256-GCM", salt: saltB64, iv: u8b64(iv), ct: u8b64(ct) });
 }
 async function unlock(text, pass) {
-  let v; try { v = JSON.parse(text); } catch { throw new Error("the saved file isn't a Gut Log vault"); }
-  if (v.format !== "vault" || !v.ct) throw new Error("the saved file isn't a Gut Log vault");
+  let v; try { v = JSON.parse(text); } catch { throw new Error("the saved file isn't a Daybook vault"); }
+  if (v.format !== "vault" || !v.ct) throw new Error("the saved file isn't a Daybook vault");
   const key = await deriveKey(pass, v.salt, v.iter || ITER);
   let plain;
   try { plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64u8(v.iv) }, key, b64u8(v.ct)); }
@@ -152,7 +152,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
+  <div class="sub">Daybook is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });
 async function syncSave() {

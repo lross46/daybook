@@ -1,4 +1,4 @@
-# Gut Log
+# Daybook
 
 A private daily log for ulcerative colitis, built as a phone web app.
 

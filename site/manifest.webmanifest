@@ -1,7 +1,7 @@
 {
-  "name": "Gut Log",
-  "short_name": "Gut Log",
-  "description": "A private daily log to share with your IBD team.",
+  "name": "Daybook",
+  "short_name": "Daybook",
+  "description": "A private daily diary.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

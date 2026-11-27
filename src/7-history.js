@@ -101,10 +101,13 @@ function aboutOpen() {
     <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and your events.</div>
     <button class="btn primary" data-act="profileEdit">Edit</button>`);
 }
+/* folded sections stay open while the tab redraws (e.g. after ticking a question) */
+const foldOpen = {};
+const foldHead = (id, title, sub) => `<button class="about fold" data-act="listToggle" data-fold="${id}" aria-expanded="${!!foldOpen[id]}"><span class="grow"><b>${esc(title)}</b><span class="sub">${esc(sub)}</span></span><span class="chev" aria-hidden="true"${foldOpen[id] ? ' style="transform:rotate(90deg)"' : ""}>›</span></button>`;
 /* open or close a folded section: the button names its section with data-fold (default: the list) */
 function listToggle(el, open) {
   const id = el?.dataset.fold || "evList", l = $("#" + id); if (!l) return;
-  l.hidden = open === undefined ? !l.hidden : !open;
+  l.hidden = open === undefined ? !l.hidden : !open; foldOpen[id] = !l.hidden;
   const b = el || $(`[data-act="listToggle"][data-fold="${id}"]`) || $('[data-act="listToggle"]:not([data-fold])');
   if (b) { b.setAttribute("aria-expanded", !l.hidden); const c = b.querySelector(".chev"); if (c) c.style.transform = l.hidden ? "" : "rotate(90deg)"; }
   if (id === "tlBody" && !l.hidden) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }

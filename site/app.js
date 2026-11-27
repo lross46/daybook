@@ -627,10 +627,13 @@ function aboutOpen() {
     <div class="sub">Goes in full into every report. Rows marked "auto" fill themselves from Meds and your events.</div>
     <button class="btn primary" data-act="profileEdit">Edit</button>`);
 }
+/* folded sections stay open while the tab redraws (e.g. after ticking a question) */
+const foldOpen = {};
+const foldHead = (id, title, sub) => `<button class="about fold" data-act="listToggle" data-fold="${id}" aria-expanded="${!!foldOpen[id]}"><span class="grow"><b>${esc(title)}</b><span class="sub">${esc(sub)}</span></span><span class="chev" aria-hidden="true"${foldOpen[id] ? ' style="transform:rotate(90deg)"' : ""}>›</span></button>`;
 /* open or close a folded section: the button names its section with data-fold (default: the list) */
 function listToggle(el, open) {
   const id = el?.dataset.fold || "evList", l = $("#" + id); if (!l) return;
-  l.hidden = open === undefined ? !l.hidden : !open;
+  l.hidden = open === undefined ? !l.hidden : !open; foldOpen[id] = !l.hidden;
   const b = el || $(`[data-act="listToggle"][data-fold="${id}"]`) || $('[data-act="listToggle"]:not([data-fold])');
   if (b) { b.setAttribute("aria-expanded", !l.hidden); const c = b.querySelector(".chev"); if (c) c.style.transform = l.hidden ? "" : "rotate(90deg)"; }
   if (id === "tlBody" && !l.hidden) { drawChart(); const gb = $("#ganttBox"); if (gb) gb.scrollLeft = gb.scrollWidth; }
@@ -795,15 +798,17 @@ function renderDoctor() {
     ${hl.number ? `<a class="btn" href="tel:${esc(hl.number.replace(/[^\d+]/g, ""))}" style="display:flex;align-items:center;gap:6px;background:var(--ok);color:#fff;border-color:var(--ok)">${S("0 0 24 24", I.phone, `${stroke} width="18" height="18"`)}Call</a>` : ""}</div>
     <button class="linkbtn" data-act="helplineEdit">${hl.number ? "Edit number" : "+ Add number"}</button></div>
   <button class="card about" data-act="meEdit"><span class="ki">${S("0 0 24 24", I.diag, stroke)}</span><span class="grow"><b>My details</b><span class="sub">${esc([me.name, me.nhs && "NHS " + me.nhs].filter(Boolean).join(" · ") || "Tap to add name, date of birth and NHS number")}</span></span><span class="chev" aria-hidden="true">›</span></button>
-  <div class="card"><div class="row"><div class="label">Questions for next visit</div><span class="sub">${qs.filter((q) => !q.done).length} to ask</span></div>
+  <div class="card">${foldHead("qBody", "Questions for next visit", qs.filter((q) => !q.done).length ? `${qs.filter((q) => !q.done).length} to ask` : "None yet")}
+    <div id="qBody" ${foldOpen.qBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
     <div class="f" id="qs">${qs.map((q) => `<label class="qrow"><input type="checkbox" data-q="${q.id}" ${q.done ? "checked" : ""}><span style="${q.done ? "text-decoration:line-through;color:var(--muted)" : ""}">${esc(q.text)}</span><button class="x" data-qdel="${q.id}" aria-label="Delete question">×</button></label>`).join("")}</div>
     <form id="qForm" class="row" style="gap:8px"><input id="qIn" class="in" placeholder="Type a question"><button class="btn small" style="padding:10px 14px">Add</button></form>
-    ${qs.some((q) => q.done) ? `<button class="linkbtn" data-act="qClear">Remove ticked questions</button>` : ""}</div>
-  <div class="card rep"><div class="label">Report for my IBD team</div>
+    ${qs.some((q) => q.done) ? `<button class="linkbtn" data-act="qClear">Remove ticked questions</button>` : ""}</div></div>
+  <div class="card rep">${foldHead("repBody", "Report for my IBD team", `Last ${PERIODS.find(([, m]) => m === period)?.[0] || ""} · PDF or Excel`)}
+    <div id="repBody" ${foldOpen.repBody ? "" : "hidden"} style="display:flex;flex-direction:column;gap:12px">
     <div class="seg" id="period">${PERIODS.map(([l, m]) => `<button data-period="${m}" aria-pressed="${m === period}">${l}</button>`).join("")}</div>
     <div class="sub">Put in the report</div>
     <div class="chips" role="group" aria-label="Put in the report">${REP_PARTS.map(([k, l]) => `<button type="button" data-rep="${k}" aria-pressed="${!!repInc[k]}">${l}</button>`).join("")}</div>
-    <div class="btns"><button class="btn primary" data-act="pdf">Save PDF</button><button class="btn primary" data-act="excel">Save Excel</button></div></div>
+    <div class="btns"><button class="btn primary" data-act="pdf">Save PDF</button><button class="btn primary" data-act="excel">Save Excel</button></div></div></div>
   <div class="sub" style="text-align:center">A personal log. It doesn't give medical advice.</div>`;
 }
 document.addEventListener("submit", (e) => {

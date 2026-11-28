@@ -463,3 +463,7 @@ body{margin:0;-webkit-tap-highlight-color:transparent}
   .wc{right:max(16px,calc(50% - 514px))}
   .toast{bottom:96px}
 }
+/* the "Saved" tick: a clear green pill that pops in */
+.tick{background:var(--ok);color:#fff;border-radius:999px;padding:5px 10px 5px 8px;font-size:13.5px;transform:scale(.8)}
+.tick.on{transform:scale(1)}
+.tick svg{width:15px;height:15px}

@@ -44,12 +44,12 @@ function save(msg) {
   data.at = Date.now();
   LS.set("gl.data", data);
   dirty = true; LS.set("gl.dirty", true);
-  if (msg) toast(msg);
+  if (msg) toast("✓ " + msg);
   flashTick();
   if (typeof scheduleSync === "function") scheduleSync();
 }
 /* a brief "Saved" tick in the header after every change */
-function flashTick() { const t = document.getElementById("tick"); if (!t) return; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 1300); }
+function flashTick() { const t = document.getElementById("tick"); if (!t) return; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2200); }
 const live = (arr) => arr.filter((x) => !x.del);
 const stamp = (o) => { o.at = Date.now(); return o; };
 
@@ -327,20 +327,21 @@ function dayVisits() { const d = ensureDay(viewDay); if (!d.visits) d.visits = v
 function visitAdd() {
   const d = dayVisits(), today = viewDay === todayIso(), t = today ? nowHM() : "";
   d.visits.push({ id: uid(), t, night: isNightTime(t), bristol: null, blood: 0, mucus: 0, urg: 0 });
+  const id = d.visits[d.visits.length - 1].id;
   sumVisits(d); touchDay(); renderToday();
-  toast(t ? `Stool logged at ${t}. Tap it to add details` : "Stool logged. Tap it to add details");
+  visitOpen(id, true); /* straight into the details; it's already saved, details are optional */
 }
 const vpick = (key, labels, iconFn, val, cls = "") => `<div class="pick ${cls}" data-vpick="${key}">${labels.map((l, i) => `<button aria-pressed="${val === i}" aria-label="${esc(l)}">${iconFn(i)}${l ? `<span>${l}</span>` : ""}</button>`).join("")}</div>`;
-function visitOpen(id) {
+function visitOpen(id, fresh) {
   const d = getDay(viewDay), list = visitsOf(d), i = list.findIndex((x) => x.id === id); if (i < 0) return;
   let v = list[i]; if (!d.visits) { dayVisits(); v = d.visits[i]; }
-  openSheet(`${sheetHead("Stool", esc(fmtDay(viewDay)))}
+  openSheet(`${sheetHead(fresh ? "Stool added" : "Stool", esc(fmtDay(viewDay)) + (fresh && v.t ? " · " + v.t + ". Add details if you like" : ""))}
     <div class="row"><label class="f" style="flex:1"><span>Time</span><input id="vTime" type="time" value="${v.t || ""}"></label><label class="qrow" style="margin-top:18px"><input type="checkbox" id="vNight" ${v.night ? "checked" : ""}><span>Woke me up at night</span></label></div>
     <div class="f"><span>Type</span>${vpick("bristol", BR.map((_, i) => String(i + 1)), brIco, v.bristol == null ? null : v.bristol - 1, "b7")}<div class="row sub"><span>Hard</span><span>Normal</span><span>Watery</span></div></div>
     <div class="f"><span>Blood</span>${vpick("blood", BLOOD, bloodIco, v.blood || 0, "blood")}</div>
     <div class="f"><span>Mucus</span>${vpick("mucus", MUCUS, mucusIco, v.mucus || 0, "mucus")}</div>
     <div class="f"><span>Urgency</span>${vpick("urg", URG, urgIco, v.urg || 0)}</div>
-    <button class="btn primary" data-act="close">Done</button>
+    <button class="btn primary" data-act="visitDone">Done</button>
     <button class="btn danger" data-act="visitDel" data-id="${v.id}">Delete this one</button>`, () => { if (tab === "today") renderToday(); });
   $("#sheet").dataset.vid = v.id;
 }
@@ -1449,7 +1450,7 @@ function settingsSheet() {
   <div class="sub">On iPhone, the Home Screen app keeps its own storage, separate from Safari. Set this up inside the Home Screen app.</div>
   <div class="label" style="margin-top:8px">This phone</div>
   <button class="btn danger" data-act="wipe">Delete everything on this phone</button>
-  <div class="sub">App version 61</div>
+  <div class="sub">App version 62</div>
   <div class="sub">Gut Log is a personal diary to share with your IBD team. It isn't medical advice and doesn't replace your doctor or nurse.</div>`);
 }
 document.addEventListener("change", (e) => { if (e.target.id === "sShow") for (const id of ["#sTok", "#sPass"]) $(id).type = e.target.checked ? "text" : "password"; });
@@ -1511,6 +1512,7 @@ const ACTS = {
   flareStart: () => { if (openFlare()) return; data.flares.push(stamp({ id: uid(), start: viewDay, end: null, sev: "Moderate", note: "" })); save("Flare started. Day 1"); render(); },
   flareEnd: () => { const f = openFlare(); if (!f) return; f.end = viewDay < roughLo(f.start) ? roughLo(f.start) : viewDay; stamp(f); save("Flare ended. Well done"); render(); },
   visitAdd: () => visitAdd(),
+  visitDone: () => { closeSheet(); toast("✓ Stool saved"); flashTick(); },
   visitDel: (el) => visitDel(el.dataset.id),
   clearDay: () => { data.days[viewDay] = { del: true, at: Date.now() }; save("Day cleared"); renderToday(); },
   /* Trends */

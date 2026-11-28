@@ -123,20 +123,21 @@ function dayVisits() { const d = ensureDay(viewDay); if (!d.visits) d.visits = v
 function visitAdd() {
   const d = dayVisits(), today = viewDay === todayIso(), t = today ? nowHM() : "";
   d.visits.push({ id: uid(), t, night: isNightTime(t), bristol: null, blood: 0, mucus: 0, urg: 0 });
+  const id = d.visits[d.visits.length - 1].id;
   sumVisits(d); touchDay(); renderToday();
-  toast(t ? `Stool logged at ${t}. Tap it to add details` : "Stool logged. Tap it to add details");
+  visitOpen(id, true); /* straight into the details; it's already saved, details are optional */
 }
 const vpick = (key, labels, iconFn, val, cls = "") => `<div class="pick ${cls}" data-vpick="${key}">${labels.map((l, i) => `<button aria-pressed="${val === i}" aria-label="${esc(l)}">${iconFn(i)}${l ? `<span>${l}</span>` : ""}</button>`).join("")}</div>`;
-function visitOpen(id) {
+function visitOpen(id, fresh) {
   const d = getDay(viewDay), list = visitsOf(d), i = list.findIndex((x) => x.id === id); if (i < 0) return;
   let v = list[i]; if (!d.visits) { dayVisits(); v = d.visits[i]; }
-  openSheet(`${sheetHead("Stool", esc(fmtDay(viewDay)))}
+  openSheet(`${sheetHead(fresh ? "Stool added" : "Stool", esc(fmtDay(viewDay)) + (fresh && v.t ? " · " + v.t + ". Add details if you like" : ""))}
     <div class="row"><label class="f" style="flex:1"><span>Time</span><input id="vTime" type="time" value="${v.t || ""}"></label><label class="qrow" style="margin-top:18px"><input type="checkbox" id="vNight" ${v.night ? "checked" : ""}><span>Woke me up at night</span></label></div>
     <div class="f"><span>Type</span>${vpick("bristol", BR.map((_, i) => String(i + 1)), brIco, v.bristol == null ? null : v.bristol - 1, "b7")}<div class="row sub"><span>Hard</span><span>Normal</span><span>Watery</span></div></div>
     <div class="f"><span>Blood</span>${vpick("blood", BLOOD, bloodIco, v.blood || 0, "blood")}</div>
     <div class="f"><span>Mucus</span>${vpick("mucus", MUCUS, mucusIco, v.mucus || 0, "mucus")}</div>
     <div class="f"><span>Urgency</span>${vpick("urg", URG, urgIco, v.urg || 0)}</div>
-    <button class="btn primary" data-act="close">Done</button>
+    <button class="btn primary" data-act="visitDone">Done</button>
     <button class="btn danger" data-act="visitDel" data-id="${v.id}">Delete this one</button>`, () => { if (tab === "today") renderToday(); });
   $("#sheet").dataset.vid = v.id;
 }

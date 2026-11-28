@@ -31,6 +31,7 @@ const ACTS = {
   flareStart: () => { if (openFlare()) return; data.flares.push(stamp({ id: uid(), start: viewDay, end: null, sev: "Moderate", note: "" })); save("Flare started. Day 1"); render(); },
   flareEnd: () => { const f = openFlare(); if (!f) return; f.end = viewDay < roughLo(f.start) ? roughLo(f.start) : viewDay; stamp(f); save("Flare ended. Well done"); render(); },
   visitAdd: () => visitAdd(),
+  visitDone: () => { closeSheet(); toast("✓ Stool saved"); flashTick(); },
   visitDel: (el) => visitDel(el.dataset.id),
   clearDay: () => { data.days[viewDay] = { del: true, at: Date.now() }; save("Day cleared"); renderToday(); },
   /* Trends */
